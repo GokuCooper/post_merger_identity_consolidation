@@ -1,0 +1,2 @@
+SourceName,TargetRDN,TargetSAM,TargetUPN
+jsmith,CN=Jordan Smith,jsmith_pt,jsmith_pt@iamlab.local

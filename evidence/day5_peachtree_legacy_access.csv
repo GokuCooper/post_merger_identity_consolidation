@@ -1,0 +1,16 @@
+user,app,access_name,approver,last_reviewed,notes
+dwalker,Dispatch Board,Dispatch - Supervisor,M. Reed,2025-03-14,
+jsmith,Dispatch Board,Dispatch - user,D. Walker,2025-03-14,
+mlopez,Dispatch Board,dispatch user,D. Walker,2025-03-14,
+kwhite,Dispatch Board,Dispatch - user,D. Walker,2024-11-02,left company Jan 2026
+tnguyen,WMS,WMS warehouse lead,D. Walker,2025-03-14,
+bharris,WMS,wms - warehouse,D. Walker,2025-03-14,
+kpatel,QuickLedger,AP + GL approver,M. Reed,2025-03-14,
+ljohnson,QuickLedger,AP entry,K. Patel,2025-03-14,
+achen,QuickLedger,AP entry,K. Patel,2025-03-14,
+rcole,QuickLedger,GL close,K. Patel,2025-03-14,
+rgarcia,QuickLedger,AP entry,K. Patel,2024-11-02,left company Mar 2026
+cbrooks,Helpdesk Tool,helpdesk tech,M. Reed,2025-03-14,
+nfoster,Helpdesk Tool,helpdesk admin,M. Reed,2025-03-14,
+nfoster,Old CRM,crm_poweruser,,,nobody knows who approved this
+all staff,Shared Drive,S:\ everyone,M. Reed,2024-06-01,

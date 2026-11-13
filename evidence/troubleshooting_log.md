@@ -1,0 +1,19 @@
+# Troubleshooting log
+
+Every error, in the order it happened. This is the raw material for the README "Snag" sections and for interview stories.
+
+| # | Day | What I was doing | Error (exact text) | Root cause layer | Fix | Screenshot |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 1 | Creating the forest trust from iamlab.local before DNS was set up | Wizard: "The name you specified is not a valid Windows domain name. Is the specified name a Kerberos V5 realm?" Resolve-DnsName: DNS_ERROR_RCODE_NAME_ERROR. nltest: 1355 0x54b ERROR_NO_SUCH_DOMAIN | DNS | Conditional forwarders on both DCs: peachtree.local to 192.168.1.60, iamlab.local to 192.168.1.54 | 02_trust_wizard_dns_failure.png, 02a_iamlab_cannot_resolve_peachtree.png |
+| 2 | 1 | Retesting right after adding the forwarder | Resolve-DnsName returned 192.168.1.60 and the SRV record resolved, but nltest /dsgetdc:peachtree.local still returned 1355 ERROR_NO_SUCH_DOMAIN | DC locator negative cache (Netlogon). DNS itself was already correct | nltest /dsgetdc:peachtree.local /force bypassed the cached failure | 03a_forwarder_iamlab_to_peachtree.png |
+| 3 | 1 | Verifying the new trust with netdom, with and without Peachtree credentials | Without credentials: "The command failed to complete successfully." With /UserD:PEACHTREE\Administrator: "The attempt to do a group look up on domain controller \\WIN-4LRG6K4IKL1.iamlab.local for the Domain Admins group of trusting domain peachtree.local failed with the following error: Access is denied." | netdom's own permission pre-check, not the trust. netdom never reached the trust test | No fix needed. Verified with two independent tools: nltest /sc_verify:peachtree.local returned NERR_Success, and the Validate button returned "The trust has been validated. It is in place and active." | 04b_netdom_verify_access_denied.png, 04c_nltest_sc_verify_success.png, 04d_trust_validated_in_place_and_active.png |
+| 4 | 1 | Clicking Yes to refresh name suffix routing after Validate | "Insufficient system resources exist to complete the requested service." | Unconfirmed. Not memory (13,778 MB free of 16,383 MB). Most likely a cross-forest call during the refresh | No fix needed. nltest /dsgetfti:peachtree.local showed TLN peachtree.local intact, and the Name Suffix Routing tab showed *.peachtree.local Enabled | 04f_suffix_refresh_insufficient_resources.png, 04g_forest_trust_info_suffix_intact.png, 04h_dc_memory_not_the_cause.png, 04e_name_suffix_routing_enabled.png |
+| 5 | 1 | Negative test: mlopez (not in DKN_Projects_Readers) mapping the DKN share | net use returned "The command completed successfully." for a user who should be blocked | Test design: connecting is not access. Get-SmbConnection showed Credential PEACHTREE\mlopez, so it was not session reuse | Tested the actual resource. Get-Content returned "Access is denied" by server name and again on a fresh session by IP address | 05a_peachtree_user_not_in_group_denied.png, 05b_mlopez_denied_fresh_session_by_ip.png |
+
+## Lessons
+
+1. **Check DNS before blaming the trust.** The wizard's "Kerberos V5 realm" question was really a DNS failure in disguise.
+2. **After a fix, test the exact thing the failing tool needs** (the SRV record, not just the domain name), and clear caches before deciding the fix didn't work.
+3. **A failing verification tool is not a failing system.** Read what the tool was actually doing when it failed, then confirm with a second independent tool.
+4. **Windows error text describes the symptom, not always the cause.** Check the literal claim (memory), then check what you actually care about (routing rules).
+5. **A negative test has to try the thing you're protecting.** "Can she connect?" and "can she read the data?" are two different questions.

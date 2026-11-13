@@ -1,0 +1,25 @@
+# Secrets never go to GitHub
+.env
+*.env
+*.pfx
+*.pem
+*.key
+client_secret*.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Raw exports that may hold real tenant or object IDs.
+# Review, blur or trim them, then rename without _raw to commit.
+*_raw.csv
+*_raw.json
+
+# OS noise
+Thumbs.db
+.DS_Store
+
+# ADMT generated passwords. Never commit.
+passwords.txt
+**/passwords.txt

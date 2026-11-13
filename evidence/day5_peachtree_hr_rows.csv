@@ -1,0 +1,13 @@
+employeeId,firstName,lastName,email,department,title,managerId,status,company
+PT1001,Dana,Walker,dana.walker@peachtree.local,Ops,Operations Manager,,Active,Peachtree
+PT1002,Kiran,Patel,kiran.patel@peachtree.local,Finance,Finance Manager,,Active,Peachtree
+PT1003,Marcus,Reed,marcus.reed@peachtree.local,IT,IT Manager,,Active,Peachtree
+PT1004,Jordan,Smith,jordan.smith@peachtree.local,Ops,Dispatcher,PT1001,Active,Peachtree
+PT1005,Maria,Lopez,maria.lopez@peachtree.local,Ops,Dispatcher,PT1001,Active,Peachtree
+PT1006,Tuan,Nguyen,tuan.nguyen@peachtree.local,Ops,Warehouse Lead,PT1001,Active,Peachtree
+PT1007,Bria,Harris,bria.harris@peachtree.local,Ops,Warehouse Associate,PT1001,Active,Peachtree
+PT1008,Lena,Johnson,lena.johnson@peachtree.local,Finance,AP Specialist,PT1002,Active,Peachtree
+PT1009,Alex,Chen,alex.chen@peachtree.local,Finance,AP Specialist,PT1002,Active,Peachtree
+PT1010,Ray,Cole,ray.cole@peachtree.local,Finance,GL Accountant,PT1002,Active,Peachtree
+PT1011,Casey,Brooks,casey.brooks@peachtree.local,IT,Helpdesk Technician,PT1003,Active,Peachtree
+PT1012,Nia,Foster,nia.foster@peachtree.local,IT,Systems Administrator,PT1003,Active,Peachtree

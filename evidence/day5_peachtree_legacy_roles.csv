@@ -1,0 +1,8 @@
+legacy_role_name,description,access_bundle
+Dispatch Team,dispatchers + supervisor,Dispatch Board;Shared Drive
+dispatch,same as above?,Dispatch Board
+Warehouse,warehouse floor,WMS;Shared Drive
+Finance - AP,accounts payable,QuickLedger AP entry;Shared Drive
+Finance GL,general ledger,QuickLedger GL close
+Finance Mgr,approves AP and GL,QuickLedger AP + GL approver
+IT,everything IT,Helpdesk Tool;Old CRM;Shared Drive

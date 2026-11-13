@@ -1,0 +1,12 @@
+legacy_access_name,legacy_app,ad_group_after_migration,sailpoint_entitlement,target_role,decision,owner,reason
+Dispatch - Supervisor,Dispatch Board,PT_Ops_Dispatch,PT_Ops_Dispatch,PT Dispatch,Keep,dwalker,Supervisor uses same group as dispatchers
+Dispatch - user / dispatch user,Dispatch Board,PT_Ops_Dispatch,PT_Ops_Dispatch,PT Dispatch,Keep and merge names,dwalker,Two spellings of one access line
+WMS warehouse lead / wms - warehouse,WMS,PT_Ops_Warehouse,PT_Ops_Warehouse,PT Warehouse,Keep and merge names,dwalker,Two spellings of one access line
+AP entry,QuickLedger,PT_Finance_AP,PT_Finance_AP,PT Accounts Payable,Keep,kpatel,
+GL close,QuickLedger,PT_Finance_GL,PT_Finance_GL,PT General Ledger,Keep,kpatel,
+AP + GL approver,QuickLedger,PT_Finance_AP + PT_Finance_GL,PT_Finance_AP + PT_Finance_GL,PT Finance Manager,Keep and flag for SoD review,kpatel,Holding AP and GL together is a classic SoD conflict
+helpdesk tech / helpdesk admin,Helpdesk Tool,PT_IT_Helpdesk,PT_IT_Helpdesk,PT IT Helpdesk,Keep,mreed,
+crm_poweruser,Old CRM,(none),(none),(none),Retire,mreed,No approver and no AD group; revoke in certification
+S:\ everyone,Shared Drive,PT_All_Staff,PT_All_Staff,PT Employee Base (birthright),Keep as birthright,mreed,Every Peachtree employee gets it on day one
+Dispatch - user (kwhite),Dispatch Board,(none),(none),(none),Retire,dwalker,User left company; no account migrated
+AP entry (rgarcia),QuickLedger,(none),(none),(none),Retire,kpatel,User left company; no account migrated

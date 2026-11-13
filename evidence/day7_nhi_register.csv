@@ -1,0 +1,6 @@
+identity_name,identity_type,owner,purpose,where_it_runs,credential_type,permissions,rotation,review_due,status
+svc_sql_pt,AD service account,nfoster,Runs SQL Server Express,DKNMIG01,Password in CyberArk,Log on as a service on DKNMIG01,CyberArk CPM with Windows Service usage,2027-02-15,Active
+svc_backup_pt,AD service account,nfoster,Nightly file backup,DKNMIG01,Password in CyberArk,Backup Operators,CyberArk CPM,2027-02-15,Active
+gmsa_reports_pt,gMSA,mreed,Reporting job,DKNMIG01,Managed by Windows,Read on reports share,Windows every 30 days,2027-02-15,Active
+svc_reports_pt,AD service account,mreed,Replaced by gmsa_reports_pt,none,Password,none,none,2026-12-01,Disabled pending delete
+access_hygiene_agent,Entra app registration (AI agent),DeJurnett,Read only access review of Peachtree identities,GitHub Actions,Federated credential (no secret),User.Read.All; AuditLog.Read.All,No secret to rotate; tokens expire on their own,2027-02-15,Active

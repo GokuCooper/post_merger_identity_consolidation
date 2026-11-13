@@ -1,0 +1,30 @@
+# Day 7: Negative test. This workflow is SUPPOSED to fail.
+#
+# It is identical to the agent sign in, except it does NOT use the
+# "access-agent" environment. Without the environment, GitHub puts a
+# different subject in the OIDC token (repo:...:ref:refs/heads/<branch>),
+# which does not match the federated credential in Entra.
+#
+# Expected result: azure/login fails with an AADSTS700213 / AADSTS70021 style
+# "no matching federated identity record" error. Screenshot it. That failure
+# is the proof that the trust rule only lets the approved job in.
+
+name: Federation negative test (expected to fail)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  wrong-subject:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Try to sign in without the approved environment
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true

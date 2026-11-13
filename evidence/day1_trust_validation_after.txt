@@ -1,0 +1,64 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261111031953
+Username: IAMLAB\Administrator
+RunAs User: IAMLAB\Administrator
+Configuration Name: 
+Machine: WIN-4LRG6K4IKL1 (Microsoft Windows NT 10.0.20348.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+Process ID: 3792
+PSVersion: 5.1.20348.558
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.20348.558
+BuildVersion: 10.0.20348.558
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Trust validation (after) run on WIN-4LRG6K4IKL1 at 2026-11-11T03:19:53
+Local forest: iamlab.local   Partner forest: peachtree.local
+
+=== 1. DNS: can we find the partner forest? ===
+
+Name            Type TTL Section IPAddress   
+----            ---- --- ------- ---------   
+peachtree.local A    600 Answer  192.168.1.60
+
+Name                                 Type TTL Section NameTarget             Priority Weight Port
+----                                 ---- --- ------- ----------             -------- ------ ----
+_ldap._tcp.dc._msdcs.peachtree.local SRV  600 Answer  ptdc01.peachtree.local 0        100    389 
+
+Name       : ptdc01.peachtree.local
+QueryType  : A
+TTL        : 2024
+Section    : Additional
+IP4Address : 192.168.1.60
+
+=== 2. DC locator: can we find a DC in the partner forest? ===
+           DC: \\PTDC01.peachtree.local
+      Address: \\192.168.1.60
+     Dom Guid: 825749ae-6611-488d-84f8-045de18de31a
+     Dom Name: peachtree.local
+  Forest Name: peachtree.local
+ Dc Site Name: Default-First-Site-Name
+Our Site Name: Default-First-Site-Name
+        Flags: PDC GC DS LDAP KDC TIMESERV GTIMESERV WRITABLE DNS_DC DNS_DOMAIN DNS_FOREST CLOSE_SITE FULL_SECRET WS DS_8 DS_9 DS_10 KEYLIST
+The command completed successfully
+
+=== 3. Trust objects in iamlab.local ===
+
+
+Name                    : peachtree.local
+Direction               : BiDirectional
+ForestTransitive        : True
+SelectiveAuthentication : False
+SIDFilteringQuarantined : False
+SIDFilteringForestAware : False
+
+=== 4. netdom verify ===
+The command failed to complete successfully.
+**********************
+Windows PowerShell transcript end
+End time: 20261111031953
+**********************

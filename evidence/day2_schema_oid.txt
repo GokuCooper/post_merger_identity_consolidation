@@ -1,0 +1,6 @@
+Attribute     : dknSourceCompany
+OID           : 1.2.840.113556.1.8000.2554.17162.45466.18927.19311.35874.339363.8565606
+Syntax        : Unicode String (single value)
+Added to class: user
+Generated     : 2026-11-11T16:56:30 on WIN-4LRG6K4IKL1
+Note          : Schema changes cannot be deleted, only made defunct. DC snapshot taken first.

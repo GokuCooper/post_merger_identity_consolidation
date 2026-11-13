@@ -1,0 +1,59 @@
+# Day 7: Runs the access hygiene agent with workload identity federation.
+# No client secret is stored anywhere. GitHub issues a short lived OIDC token,
+# Entra checks it against the federated credential on the app registration,
+# and hands back a Graph token that expires on its own.
+#
+# One time setup in GitHub (Settings):
+#   Environments  -> create "access-agent"
+#   Variables     -> AZURE_CLIENT_ID and AZURE_TENANT_ID (IDs are not secrets)
+# One time setup in Entra (app registration -> Certificates & secrets -> Federated credentials):
+#   Issuer   https://token.actions.githubusercontent.com
+#   Subject  repo:GokuCooper/post_merger_identity_consolidation:environment:access-agent
+#   Audience api://AzureADTokenExchange
+
+name: Access hygiene agent
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 13 * * 1"   # Mondays 13:17 UTC
+
+permissions:
+  id-token: write   # lets the job request a GitHub OIDC token
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    environment: access-agent   # must match the federated credential subject
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agent dependencies
+        run: pip install -r agent/requirements.txt
+
+      - name: Sign in to Entra with OIDC (no secret)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true   # the lab tenant has no Azure subscription
+
+      - name: Run access review
+        run: python agent/access_hygiene_agent.py --report evidence/day7_agent_report.csv
+
+      - name: Prove the agent is read only
+        if: ${{ vars.TEST_USER_OBJECT_ID != '' }}
+        run: python agent/access_hygiene_agent.py --prove-read-only "${{ vars.TEST_USER_OBJECT_ID }}"
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: access-hygiene-report
+          path: evidence/day7_agent_report.csv

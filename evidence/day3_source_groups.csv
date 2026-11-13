@@ -1,0 +1,7 @@
+"Name","Scope","SourceSID","MemberCount","Members"
+"PT_Ops_Dispatch","Global","S-1-5-21-80346803-2236549066-287377420-1115","3","Maria Lopez;Jordan Smith;Dana Walker"
+"PT_Ops_Warehouse","Global","S-1-5-21-80346803-2236549066-287377420-1116","3","Bria Harris;Tuan Nguyen;Dana Walker"
+"PT_Finance_AP","Global","S-1-5-21-80346803-2236549066-287377420-1117","3","Alex Chen;Lena Johnson;Kiran Patel"
+"PT_Finance_GL","Global","S-1-5-21-80346803-2236549066-287377420-1118","2","Ray Cole;Kiran Patel"
+"PT_IT_Helpdesk","Global","S-1-5-21-80346803-2236549066-287377420-1119","3","Nia Foster;Casey Brooks;Marcus Reed"
+"PT_All_Staff","Global","S-1-5-21-80346803-2236549066-287377420-1120","12","Nia Foster;Casey Brooks;Ray Cole;Alex Chen;Lena Johnson;Bria Harris;Tuan Nguyen;Maria Lopez;Jordan Smith;Marcus Reed;Kiran Patel;Dana Walker"
