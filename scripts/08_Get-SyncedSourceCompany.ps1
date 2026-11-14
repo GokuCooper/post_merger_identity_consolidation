@@ -12,20 +12,27 @@
       3. Pulls every user's value for it and exports the result
 
     Uses the Microsoft Graph PowerShell SDK with delegated sign in
-    (use your labadmin account, read only scopes).
+    (use your labadmin account, read only scopes, user consent only).
+    Run it from PowerShell 7 on a workstation, not on the Entra Connect server.
+
+    -TenantId is required. Without it, Web Account Manager can treat a work
+    account as a personal Microsoft account and fail with
+    "That Microsoft account doesn't exist".
 
 .EXAMPLE
     Install-Module Microsoft.Graph.Authentication -Scope CurrentUser
-    .\08_Get-SyncedSourceCompany.ps1
+    .\08_Get-SyncedSourceCompany.ps1 -TenantId <tenant>.onmicrosoft.com
 #>
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory)]
+    [string]$TenantId,
     [string]$AttributeName  = 'dknSourceCompany',
     [string]$EvidencePath   = '.\evidence\day4_entra_source_company.csv'
 )
 
 Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
-Connect-MgGraph -Scopes 'User.Read.All', 'Directory.Read.All' -NoWelcome
+Connect-MgGraph -TenantId $TenantId -Scopes 'User.Read.All', 'Directory.Read.All' -NoWelcome
 
 # 1. Find the generated extension name
 $body = @{ isSyncedFromOnPremises = $true } | ConvertTo-Json
