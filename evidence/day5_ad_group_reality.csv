@@ -1,0 +1,13 @@
+SamAccountName,employeeID,Groups
+achen,PT1009,PT_Finance_AP; PT_All_Staff; GG_Peachtree_Migrated_Users
+bharris,PT1007,PT_Ops_Warehouse; PT_All_Staff; GG_Peachtree_Migrated_Users
+cbrooks,PT1011,PT_IT_Helpdesk; PT_All_Staff; GG_Peachtree_Migrated_Users
+dwalker,PT1001,PT_Ops_Warehouse; PT_Ops_Dispatch; PT_All_Staff; GG_Peachtree_Migrated_Users
+jsmith_pt,PT1004,PT_Ops_Dispatch; PT_All_Staff; GG_Peachtree_Migrated_Users
+kpatel,PT1002,PT_Finance_GL; PT_Finance_AP; PT_All_Staff; GG_Peachtree_Migrated_Users
+ljohnson,PT1008,PT_Finance_AP; PT_All_Staff; GG_Peachtree_Migrated_Users
+mlopez,PT1005,PT_Ops_Dispatch; PT_All_Staff; GG_Peachtree_Migrated_Users
+mreed,PT1003,PT_IT_Helpdesk; PT_All_Staff; GG_Peachtree_Migrated_Users
+nfoster,PT1012,PT_IT_Helpdesk_Admin; PT_IT_Helpdesk; PT_All_Staff; GG_Peachtree_Migrated_Users
+rcole,PT1010,PT_Finance_GL; PT_All_Staff; GG_Peachtree_Migrated_Users
+tnguyen,PT1006,PT_Ops_Warehouse; PT_All_Staff; GG_Peachtree_Migrated_Users
