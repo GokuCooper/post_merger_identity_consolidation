@@ -1,0 +1,13 @@
+employeeId,firstName,lastName,displayName,email,department,jobTitle,managerId,location,hireDate,employmentStatus,employeeType,costCenter
+PT1001,Dana,Walker,Dana Walker,dana.walker@peachtree.local,Ops,Operations Manager,,,,Active,Employee,
+PT1002,Kiran,Patel,Kiran Patel,kiran.patel@peachtree.local,Finance,Finance Manager,,,,Active,Employee,
+PT1003,Marcus,Reed,Marcus Reed,marcus.reed@peachtree.local,IT,IT Manager,,,,Active,Employee,
+PT1004,Jordan,Smith,Jordan Smith,jordan.smith@peachtree.local,Ops,Dispatcher,PT1001,,,Active,Employee,
+PT1005,Maria,Lopez,Maria Lopez,maria.lopez@peachtree.local,Ops,Dispatcher,PT1001,,,Active,Employee,
+PT1006,Tuan,Nguyen,Tuan Nguyen,tuan.nguyen@peachtree.local,Ops,Warehouse Lead,PT1001,,,Active,Employee,
+PT1007,Bria,Harris,Bria Harris,bria.harris@peachtree.local,Ops,Warehouse Associate,PT1001,,,Active,Employee,
+PT1008,Lena,Johnson,Lena Johnson,lena.johnson@peachtree.local,Finance,AP Specialist,PT1002,,,Active,Employee,
+PT1009,Alex,Chen,Alex Chen,alex.chen@peachtree.local,Finance,AP Specialist,PT1002,,,Active,Employee,
+PT1010,Ray,Cole,Ray Cole,ray.cole@peachtree.local,Finance,GL Accountant,PT1002,,,Active,Employee,
+PT1011,Casey,Brooks,Casey Brooks,casey.brooks@peachtree.local,IT,Helpdesk Technician,PT1003,,,Active,Employee,
+PT1012,Nia,Foster,Nia Foster,nia.foster@peachtree.local,IT,Systems Administrator,PT1003,,,Active,Employee,

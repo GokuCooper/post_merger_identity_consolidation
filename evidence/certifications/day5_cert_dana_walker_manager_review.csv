@@ -1,0 +1,13 @@
+Identity,First Name,Last Name,Type,Display Name,Description,Application,Status,Account Name,Role Application,Role Account Name,Decision,Decision Comment,Elevated Access
+Bria Harris,Bria,Harris,Role,PT Employee Base,Birthright for every Peachtree employee. Assigned automatically when HR says company = Peachtree.,,Complete,,,,Approved,,false
+Bria Harris,Bria,Harris,Role,PT Warehouse Staff,Assigned automatically when HR says company = Peachtree and jobTitle is Warehouse Lead or Warehouse Associate.,,Complete,,,,Approved,,false
+Bria Harris,Bria,Harris,Entitlement,Value IAMLAB\GG_Peachtree_Migrated_Users on memberOf,"Tracks every account moved from peachtree.local by ADMT. Technical group, not access.",Peachtree AD (iamlab),Complete,IAMLAB\bharris,,,Approved,,false
+Jordan Smith,Jordan,Smith,Role,PT Employee Base,Birthright for every Peachtree employee. Assigned automatically when HR says company = Peachtree.,,Complete,,,,Approved,,false
+Jordan Smith,Jordan,Smith,Role,PT Dispatcher,Assigned automatically when HR says company = Peachtree and jobTitle = Dispatcher.,,Complete,,,,Approved,,false
+Jordan Smith,Jordan,Smith,Entitlement,Value IAMLAB\GG_Peachtree_Migrated_Users on memberOf,"Tracks every account moved from peachtree.local by ADMT. Technical group, not access.",Peachtree AD (iamlab),Complete,IAMLAB\jsmith_pt,,,Approved,,false
+Maria Lopez,Maria,Lopez,Role,PT Employee Base,Birthright for every Peachtree employee. Assigned automatically when HR says company = Peachtree.,,Complete,,Peachtree AD (iamlab),IAMLAB\mlopez,Approved,,false
+Maria Lopez,Maria,Lopez,Role,PT Dispatcher,Assigned automatically when HR says company = Peachtree and jobTitle = Dispatcher.,,Complete,,Peachtree AD (iamlab),IAMLAB\mlopez,Approved,,false
+Maria Lopez,Maria,Lopez,Entitlement,Value IAMLAB\GG_Peachtree_Migrated_Users on memberOf,"Tracks every account moved from peachtree.local by ADMT. Technical group, not access.",Peachtree AD (iamlab),Complete,IAMLAB\mlopez,,,Approved,,false
+Tuan Nguyen,Tuan,Nguyen,Role,PT Employee Base,Birthright for every Peachtree employee. Assigned automatically when HR says company = Peachtree.,,Complete,,,,Approved,,false
+Tuan Nguyen,Tuan,Nguyen,Role,PT Warehouse Staff,Assigned automatically when HR says company = Peachtree and jobTitle is Warehouse Lead or Warehouse Associate.,,Complete,,,,Approved,,false
+Tuan Nguyen,Tuan,Nguyen,Entitlement,Value IAMLAB\GG_Peachtree_Migrated_Users on memberOf,"Tracks every account moved from peachtree.local by ADMT. Technical group, not access.",Peachtree AD (iamlab),Complete,IAMLAB\tnguyen,,,Approved,,false

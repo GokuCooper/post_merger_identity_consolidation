@@ -1,0 +1,422 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE sailpoint PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<!--
+  Peachtree department roles (Day 5, post-merger identity consolidation).
+
+  Design:
+    IT roles hold one Peachtree AD group each.
+    Business roles are assigned by HR data: company = Peachtree AND jobTitle.
+    Each business role requires the IT role(s) for that job.
+
+  On purpose, there is NO role for Finance Manager or IT Manager.
+    Finance Manager would hard-code the AP + GL SoD conflict.
+    IT Manager would make the helpdesk drift row permanent.
+    Their access goes through the mitigated violation and the certification.
+
+  IT roles are listed first so the business role references resolve on import.
+-->
+<sailpoint>
+
+  <!-- ================= IT ROLES ================= -->
+
+  <Bundle name="PT Dispatch Access" type="it">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Dispatch Board access through PT_Ops_Dispatch. Granted by the PT Dispatcher and PT Operations Manager business roles."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="Dana Walker"/>
+    </Owner>
+    <Profiles>
+      <Profile>
+        <ApplicationRef>
+          <Reference class="sailpoint.object.Application" name="Peachtree AD (iamlab)"/>
+        </ApplicationRef>
+        <Constraints>
+          <Filter operation="CONTAINS_ALL" property="memberOf">
+            <Value>
+              <List>
+                <String>CN=PT_Ops_Dispatch,OU=Groups,OU=Peachtree,OU=Acquired,DC=iamlab,DC=local</String>
+              </List>
+            </Value>
+          </Filter>
+        </Constraints>
+      </Profile>
+    </Profiles>
+  </Bundle>
+
+  <Bundle name="PT Warehouse Access" type="it">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="WMS access through PT_Ops_Warehouse. Granted by the PT Warehouse Staff business role."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="Dana Walker"/>
+    </Owner>
+    <Profiles>
+      <Profile>
+        <ApplicationRef>
+          <Reference class="sailpoint.object.Application" name="Peachtree AD (iamlab)"/>
+        </ApplicationRef>
+        <Constraints>
+          <Filter operation="CONTAINS_ALL" property="memberOf">
+            <Value>
+              <List>
+                <String>CN=PT_Ops_Warehouse,OU=Groups,OU=Peachtree,OU=Acquired,DC=iamlab,DC=local</String>
+              </List>
+            </Value>
+          </Filter>
+        </Constraints>
+      </Profile>
+    </Profiles>
+  </Bundle>
+
+  <Bundle name="PT AP Access" type="it">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="QuickLedger accounts payable entry through PT_Finance_AP. Conflicts with PT GL Access under the Peachtree AP and GL Separation policy."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="Kiran Patel"/>
+    </Owner>
+    <Profiles>
+      <Profile>
+        <ApplicationRef>
+          <Reference class="sailpoint.object.Application" name="Peachtree AD (iamlab)"/>
+        </ApplicationRef>
+        <Constraints>
+          <Filter operation="CONTAINS_ALL" property="memberOf">
+            <Value>
+              <List>
+                <String>CN=PT_Finance_AP,OU=Groups,OU=Peachtree,OU=Acquired,DC=iamlab,DC=local</String>
+              </List>
+            </Value>
+          </Filter>
+        </Constraints>
+      </Profile>
+    </Profiles>
+  </Bundle>
+
+  <Bundle name="PT GL Access" type="it">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="QuickLedger general ledger close through PT_Finance_GL. Conflicts with PT AP Access under the Peachtree AP and GL Separation policy."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="Kiran Patel"/>
+    </Owner>
+    <Profiles>
+      <Profile>
+        <ApplicationRef>
+          <Reference class="sailpoint.object.Application" name="Peachtree AD (iamlab)"/>
+        </ApplicationRef>
+        <Constraints>
+          <Filter operation="CONTAINS_ALL" property="memberOf">
+            <Value>
+              <List>
+                <String>CN=PT_Finance_GL,OU=Groups,OU=Peachtree,OU=Acquired,DC=iamlab,DC=local</String>
+              </List>
+            </Value>
+          </Filter>
+        </Constraints>
+      </Profile>
+    </Profiles>
+  </Bundle>
+
+  <Bundle name="PT Helpdesk Access" type="it">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Helpdesk Tool technician access through PT_IT_Helpdesk. Tickets only, no admin rights."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="PT1003"/>
+    </Owner>
+    <Profiles>
+      <Profile>
+        <ApplicationRef>
+          <Reference class="sailpoint.object.Application" name="Peachtree AD (iamlab)"/>
+        </ApplicationRef>
+        <Constraints>
+          <Filter operation="CONTAINS_ALL" property="memberOf">
+            <Value>
+              <List>
+                <String>CN=PT_IT_Helpdesk,OU=Groups,OU=Peachtree,OU=Acquired,DC=iamlab,DC=local</String>
+              </List>
+            </Value>
+          </Filter>
+        </Constraints>
+      </Profile>
+    </Profiles>
+  </Bundle>
+
+  <Bundle name="PT Helpdesk Admin Access" type="it">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Helpdesk Tool admin rights through PT_IT_Helpdesk_Admin. Privileged. Granted only by the PT Systems Administrator business role."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="PT1003"/>
+    </Owner>
+    <Profiles>
+      <Profile>
+        <ApplicationRef>
+          <Reference class="sailpoint.object.Application" name="Peachtree AD (iamlab)"/>
+        </ApplicationRef>
+        <Constraints>
+          <Filter operation="CONTAINS_ALL" property="memberOf">
+            <Value>
+              <List>
+                <String>CN=PT_IT_Helpdesk_Admin,OU=Groups,OU=Peachtree,OU=Acquired,DC=iamlab,DC=local</String>
+              </List>
+            </Value>
+          </Filter>
+        </Constraints>
+      </Profile>
+    </Profiles>
+  </Bundle>
+
+  <!-- ================= BUSINESS ROLES ================= -->
+
+  <Bundle name="PT Dispatcher" type="business">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Assigned automatically when HR says company = Peachtree and jobTitle = Dispatcher."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="Dana Walker"/>
+    </Owner>
+    <Requirements>
+      <Reference class="sailpoint.object.Bundle" name="PT Dispatch Access"/>
+    </Requirements>
+    <Selector>
+      <IdentitySelector>
+        <MatchExpression and="true">
+          <MatchTerm name="company" value="Peachtree"/>
+          <MatchTerm name="jobTitle" value="Dispatcher"/>
+        </MatchExpression>
+      </IdentitySelector>
+    </Selector>
+  </Bundle>
+
+  <Bundle name="PT Operations Manager" type="business">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Assigned automatically when HR says company = Peachtree and jobTitle = Operations Manager. Dispatch only; Warehouse access for this job is a certification decision. Owned by DKN IAM Team so the role holder does not own her own role."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="DKN IAM Team"/>
+    </Owner>
+    <Requirements>
+      <Reference class="sailpoint.object.Bundle" name="PT Dispatch Access"/>
+    </Requirements>
+    <Selector>
+      <IdentitySelector>
+        <MatchExpression and="true">
+          <MatchTerm name="company" value="Peachtree"/>
+          <MatchTerm name="jobTitle" value="Operations Manager"/>
+        </MatchExpression>
+      </IdentitySelector>
+    </Selector>
+  </Bundle>
+
+  <Bundle name="PT Warehouse Staff" type="business">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Assigned automatically when HR says company = Peachtree and jobTitle is Warehouse Lead or Warehouse Associate."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="Dana Walker"/>
+    </Owner>
+    <Requirements>
+      <Reference class="sailpoint.object.Bundle" name="PT Warehouse Access"/>
+    </Requirements>
+    <Selector>
+      <IdentitySelector>
+        <MatchExpression and="true">
+          <MatchTerm name="company" value="Peachtree"/>
+          <MatchTerm container="true">
+            <MatchTerm name="jobTitle" value="Warehouse Lead"/>
+            <MatchTerm name="jobTitle" value="Warehouse Associate"/>
+          </MatchTerm>
+        </MatchExpression>
+      </IdentitySelector>
+    </Selector>
+  </Bundle>
+
+  <Bundle name="PT AP Specialist" type="business">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Assigned automatically when HR says company = Peachtree and jobTitle = AP Specialist."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="Kiran Patel"/>
+    </Owner>
+    <Requirements>
+      <Reference class="sailpoint.object.Bundle" name="PT AP Access"/>
+    </Requirements>
+    <Selector>
+      <IdentitySelector>
+        <MatchExpression and="true">
+          <MatchTerm name="company" value="Peachtree"/>
+          <MatchTerm name="jobTitle" value="AP Specialist"/>
+        </MatchExpression>
+      </IdentitySelector>
+    </Selector>
+  </Bundle>
+
+  <Bundle name="PT GL Accountant" type="business">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Assigned automatically when HR says company = Peachtree and jobTitle = GL Accountant."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="Kiran Patel"/>
+    </Owner>
+    <Requirements>
+      <Reference class="sailpoint.object.Bundle" name="PT GL Access"/>
+    </Requirements>
+    <Selector>
+      <IdentitySelector>
+        <MatchExpression and="true">
+          <MatchTerm name="company" value="Peachtree"/>
+          <MatchTerm name="jobTitle" value="GL Accountant"/>
+        </MatchExpression>
+      </IdentitySelector>
+    </Selector>
+  </Bundle>
+
+  <Bundle name="PT Helpdesk Technician" type="business">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Assigned automatically when HR says company = Peachtree and jobTitle = Helpdesk Technician."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="PT1003"/>
+    </Owner>
+    <Requirements>
+      <Reference class="sailpoint.object.Bundle" name="PT Helpdesk Access"/>
+    </Requirements>
+    <Selector>
+      <IdentitySelector>
+        <MatchExpression and="true">
+          <MatchTerm name="company" value="Peachtree"/>
+          <MatchTerm name="jobTitle" value="Helpdesk Technician"/>
+        </MatchExpression>
+      </IdentitySelector>
+    </Selector>
+  </Bundle>
+
+  <Bundle name="PT Systems Administrator" type="business">
+    <Attributes>
+      <Map>
+        <entry key="sysDescriptions">
+          <value>
+            <Map>
+              <entry key="en_US" value="Assigned automatically when HR says company = Peachtree and jobTitle = Systems Administrator. Grants technician access plus helpdesk admin rights."/>
+            </Map>
+          </value>
+        </entry>
+      </Map>
+    </Attributes>
+    <Owner>
+      <Reference class="sailpoint.object.Identity" name="PT1003"/>
+    </Owner>
+    <Requirements>
+      <Reference class="sailpoint.object.Bundle" name="PT Helpdesk Access"/>
+      <Reference class="sailpoint.object.Bundle" name="PT Helpdesk Admin Access"/>
+    </Requirements>
+    <Selector>
+      <IdentitySelector>
+        <MatchExpression and="true">
+          <MatchTerm name="company" value="Peachtree"/>
+          <MatchTerm name="jobTitle" value="Systems Administrator"/>
+        </MatchExpression>
+      </IdentitySelector>
+    </Selector>
+  </Bundle>
+
+</sailpoint>

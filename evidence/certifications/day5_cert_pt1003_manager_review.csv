@@ -1,0 +1,7 @@
+Identity,First Name,Last Name,Type,Display Name,Description,Application,Status,Account Name,Role Application,Role Account Name,Decision,Decision Comment,Elevated Access
+Casey Brooks,Casey,Brooks,Role,PT Employee Base,Birthright for every Peachtree employee. Assigned automatically when HR says company = Peachtree.,,Complete,,,,Approved,,false
+Casey Brooks,Casey,Brooks,Role,PT Helpdesk Technician,Assigned automatically when HR says company = Peachtree and jobTitle = Helpdesk Technician.,,Complete,,,,Approved,,false
+Casey Brooks,Casey,Brooks,Entitlement,Value IAMLAB\GG_Peachtree_Migrated_Users on memberOf,"Tracks every account moved from peachtree.local by ADMT. Technical group, not access.",Peachtree AD (iamlab),Complete,IAMLAB\cbrooks,,,Approved,,false
+Nia Foster,Nia,Foster,Role,PT Systems Administrator,Assigned automatically when HR says company = Peachtree and jobTitle = Systems Administrator. Grants technician access plus helpdesk admin rights.,,Complete,,,,Approved,,false
+Nia Foster,Nia,Foster,Role,PT Employee Base,Birthright for every Peachtree employee. Assigned automatically when HR says company = Peachtree.,,Complete,,,,Approved,,false
+Nia Foster,Nia,Foster,Entitlement,Value IAMLAB\GG_Peachtree_Migrated_Users on memberOf,"Tracks every account moved from peachtree.local by ADMT. Technical group, not access.",Peachtree AD (iamlab),Complete,IAMLAB\nfoster,,,Approved,,false

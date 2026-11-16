@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Workflow PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Workflow explicitTransitions="true" name="PT Leaver Workflow" type="IdentityLifecycle">
+  <Variable input="true" name="identityName">
+    <Description>Name of the identity that triggered the Leaver, passed in by the lifecycle event.</Description>
+  </Variable>
+  <Variable input="true" name="trigger"/>
+  <Variable input="true" name="event"/>
+  <Variable name="leaverResult"/>
+  <Description>
+    Leaver workflow for Peachtree (Day 5, post-merger identity consolidation).
+    Launched by the PT Leaver lifecycle event when HR changes employmentStatus from Active to Inactive for company = Peachtree.
+    Disables (does not delete) the identity's Peachtree AD account so access is removed but the account and its history are kept.
+    Skips identities with no Peachtree AD account or an account that is already disabled.
+    Copied from the tested DKN Leaver Workflow pattern; only the target application changes.
+    The disable step runs in the background so it does not modify the identity while Identity Refresh holds its lock.
+  </Description>
+  <Step icon="Start" name="Start">
+    <Transition to="Disable Peachtree AD"/>
+  </Step>
+  <Step background="true" icon="Default" name="Disable Peachtree AD" resultVariable="leaverResult">
+    <Script>
+      <Source>
+import sailpoint.api.Provisioner;
+import sailpoint.object.Application;
+import sailpoint.object.Identity;
+import sailpoint.object.Link;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningProject;
+
+String appName = "Peachtree AD (iamlab)";
+
+Identity identity = context.getObjectByName(Identity.class, identityName);
+if (identity == null) {
+    throw new Exception("PT Leaver: identity not found: " + identityName);
+}
+
+Application ad = context.getObjectByName(Application.class, appName);
+if (ad == null) {
+    throw new Exception("PT Leaver: application " + appName + " not found");
+}
+
+// Idempotent: nothing to remove if there is no account or it is already disabled
+Link link = identity.getLink(ad);
+if (link == null) {
+    return "SKIPPED: " + identityName + " has no Peachtree AD account";
+}
+if (link.isDisabled()) {
+    return "SKIPPED: " + identityName + " Peachtree AD account is already disabled";
+}
+
+ProvisioningPlan plan = new ProvisioningPlan();
+plan.setIdentity(identity);
+
+AccountRequest request = new AccountRequest();
+request.setApplication(appName);
+request.setNativeIdentity(link.getNativeIdentity());
+request.setOperation(AccountRequest.Operation.Disable);
+plan.add(request);
+
+Provisioner provisioner = new Provisioner(context);
+ProvisioningProject project = provisioner.compile(plan);
+provisioner.execute(project);
+
+return "DISABLED: Peachtree AD account " + link.getNativeIdentity() + " for " + identityName;
+</Source>
+    </Script>
+    <Transition to="Stop"/>
+  </Step>
+  <Step icon="Stop" name="Stop"/>
+</Workflow>

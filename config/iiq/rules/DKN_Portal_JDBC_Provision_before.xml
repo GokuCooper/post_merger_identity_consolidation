@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE Rule PUBLIC "sailpoint.dtd" "sailpoint.dtd">
+<Rule created="1790203246765" id="c0a801f6a0d0192b81a0d06db8ad0085" language="beanshell" name="DKN_Portal JDBC Provision" type="JDBCProvision">
+  <Description>
+	Provisioning rule for the DKN_Portal JDBC application.
+	Create inserts a new row in portal_users with status ENABLED.
+	Disable sets status to DISABLED. Enable sets status back to ENABLED.
+	Any other operation fails with a clear error so nothing happens silently.
+	Uses prepared statements so HR data can never be run as SQL.
+  </Description>
+  <Source>
+import java.util.Iterator;
+import java.sql.PreparedStatement;
+import sailpoint.object.ProvisioningPlan;
+import sailpoint.object.ProvisioningPlan.AccountRequest;
+import sailpoint.object.ProvisioningPlan.AttributeRequest;
+import sailpoint.object.ProvisioningResult;
+
+// Returns one attribute value from the account request, or null if it was not sent
+String getValue(AccountRequest acct, String attrName) {
+	AttributeRequest req = acct.getAttributeRequest(attrName);
+	if (req == null || req.getValue() == null) {
+		return null;
+	}
+	return req.getValue().toString();
+}
+
+// Runs a status change and fails if no matching account exists
+void setStatus(String employeeId, String newStatus) {
+	PreparedStatement ps = connection.prepareStatement(
+		"UPDATE portal_users SET status = ? WHERE employee_id = ?");
+	try {
+		ps.setString(1, newStatus);
+		ps.setString(2, employeeId);
+		int rows = ps.executeUpdate();
+		if (rows == 0) {
+			throw new Exception("No DKN_Portal account found for " + employeeId);
+		}
+	} finally {
+		ps.close();
+	}
+}
+
+ProvisioningResult result = new ProvisioningResult();
+result.setStatus(ProvisioningResult.STATUS_COMMITTED);
+
+if (plan == null || plan.getAccountRequests() == null) {
+	return result;
+}
+
+Iterator it = plan.getAccountRequests().iterator();
+while (it.hasNext()) {
+	AccountRequest acct = (AccountRequest) it.next();
+	AccountRequest.Operation op = acct.getOperation();
+
+	// Prefer the employee_id field from the provisioning policy, fall back to the native identity
+	String employeeId = getValue(acct, "employee_id");
+	if (employeeId == null) {
+		employeeId = acct.getNativeIdentity();
+	}
+
+	try {
+		if (AccountRequest.Operation.Create.equals(op)) {
+			PreparedStatement ps = connection.prepareStatement(
+				"INSERT INTO portal_users " +
+				"(employee_id, username, first_name, last_name, email, department, job_title, status) " +
+				"VALUES (?, ?, ?, ?, ?, ?, ?, 'ENABLED')");
+			try {
+				ps.setString(1, employeeId);
+				ps.setString(2, getValue(acct, "username"));
+				ps.setString(3, getValue(acct, "first_name"));
+				ps.setString(4, getValue(acct, "last_name"));
+				ps.setString(5, getValue(acct, "email"));
+				ps.setString(6, getValue(acct, "department"));
+				ps.setString(7, getValue(acct, "job_title"));
+				ps.executeUpdate();
+			} finally {
+				ps.close();
+			}
+		} else if (AccountRequest.Operation.Disable.equals(op)) {
+			setStatus(employeeId, "DISABLED");
+		} else if (AccountRequest.Operation.Enable.equals(op)) {
+			setStatus(employeeId, "ENABLED");
+		} else {
+			result.setStatus(ProvisioningResult.STATUS_FAILED);
+			result.addError("DKN_Portal rule does not support operation " + op + " for " + employeeId);
+		}
+	} catch (Exception e) {
+		result.setStatus(ProvisioningResult.STATUS_FAILED);
+		result.addError("DKN_Portal provisioning failed for " + employeeId + ": " + e.getMessage());
+	}
+}
+
+return result;
+</Source>
+</Rule>

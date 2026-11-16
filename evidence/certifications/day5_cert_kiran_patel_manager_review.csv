@@ -1,0 +1,10 @@
+Identity,First Name,Last Name,Type,Display Name,Description,Application,Status,Account Name,Role Application,Role Account Name,Decision,Decision Comment,Elevated Access
+Alex Chen,Alex,Chen,Role,PT AP Specialist,Assigned automatically when HR says company = Peachtree and jobTitle = AP Specialist.,,Complete,,,,Approved,,false
+Alex Chen,Alex,Chen,Role,PT Employee Base,Birthright for every Peachtree employee. Assigned automatically when HR says company = Peachtree.,,Complete,,,,Approved,,false
+Alex Chen,Alex,Chen,Entitlement,Value IAMLAB\GG_Peachtree_Migrated_Users on memberOf,"Tracks every account moved from peachtree.local by ADMT. Technical group, not access.",Peachtree AD (iamlab),Complete,IAMLAB\achen,,,Approved,,false
+Lena Johnson,Lena,Johnson,Role,PT AP Specialist,Assigned automatically when HR says company = Peachtree and jobTitle = AP Specialist.,,Complete,,,,Approved,,false
+Lena Johnson,Lena,Johnson,Role,PT Employee Base,Birthright for every Peachtree employee. Assigned automatically when HR says company = Peachtree.,,Complete,,,,Approved,,false
+Lena Johnson,Lena,Johnson,Entitlement,Value IAMLAB\GG_Peachtree_Migrated_Users on memberOf,"Tracks every account moved from peachtree.local by ADMT. Technical group, not access.",Peachtree AD (iamlab),Complete,IAMLAB\ljohnson,,,Approved,,false
+Ray Cole,Ray,Cole,Role,PT Employee Base,Birthright for every Peachtree employee. Assigned automatically when HR says company = Peachtree.,,Complete,,,,Approved,,false
+Ray Cole,Ray,Cole,Role,PT GL Accountant,Assigned automatically when HR says company = Peachtree and jobTitle = GL Accountant.,,Complete,,,,Approved,,false
+Ray Cole,Ray,Cole,Entitlement,Value IAMLAB\GG_Peachtree_Migrated_Users on memberOf,"Tracks every account moved from peachtree.local by ADMT. Technical group, not access.",Peachtree AD (iamlab),Complete,IAMLAB\rcole,,,Approved,,false
