@@ -54,6 +54,13 @@ foreach ($c in $ComputerName) {
 
 $dir = Split-Path -Parent $EvidencePath
 if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
-$rows | Export-Csv -Path $EvidencePath -NoTypeInformation
-$rows | Format-Table -AutoSize
+if ($rows.Count -eq 0) {
+    # Export-Csv writes a 0 byte file for an empty list, which looks like a failed run.
+    # Write the header so the evidence file shows the scan ran and found nothing.
+    '"Computer","Type","Name","RunsAs","State"' | Set-Content -Path $EvidencePath -Encoding ASCII
+    Write-Host "No services or scheduled tasks log on as a domain account on: $($ComputerName -join ', ')" -ForegroundColor Yellow
+} else {
+    $rows | Export-Csv -Path $EvidencePath -NoTypeInformation
+    $rows | Format-Table -AutoSize
+}
 Write-Host "Evidence saved to $EvidencePath" -ForegroundColor Cyan

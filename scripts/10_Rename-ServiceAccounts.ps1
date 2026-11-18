@@ -53,7 +53,14 @@ $results = foreach ($row in $map) {
     [pscustomobject]@{ OldSam = $row.OldSam; NewSam = $row.NewSam; Owner = $row.Owner; Status = $status }
 }
 
-$path = Join-Path $EvidenceFolder 'day6_service_account_rename_results.csv'
-$results | Export-Csv -Path $path -NoTypeInformation
 $results | Format-Table -AutoSize
-Write-Host "Evidence saved to $path" -ForegroundColor Cyan
+
+# Only write evidence on a real run. A dry run must not overwrite the real results
+# or claim a file was saved when Export-Csv was skipped by -WhatIf.
+if ($WhatIfPreference) {
+    Write-Host 'Dry run only. No changes made and no evidence file written.' -ForegroundColor Yellow
+} else {
+    $path = Join-Path $EvidenceFolder 'day6_service_account_rename_results.csv'
+    $results | Export-Csv -Path $path -NoTypeInformation
+    Write-Host "Evidence saved to $path" -ForegroundColor Cyan
+}
