@@ -1,0 +1,8 @@
+"SamAccountName","Type","Enabled","Owner","WhyFlagged","Issues","PasswordAgeDays","LastLogonDate","SPN","Privileged","OU"
+"gmsa_reports_pt$","gMSA","True","mreed","gMSA;NameLooksLikeService","None","0","11/19/2026 10:32:15 PM","","False","CN=Managed Service Accounts,DC=iamlab,DC=local"
+"svc_iiq_dkn","User","True","dgrayson","NameLooksLikeService;InServiceAccountsOU","None","4","11/15/2026 3:21:24 PM","","False","OU=ServiceAccounts,DC=iamlab,DC=local"
+"svc_reports_pt","User","False","mreed","NameLooksLikeService;InServiceAccountsOU","None",,,"","False","OU=ServiceAccounts,OU=Peachtree,OU=Acquired,DC=iamlab,DC=local"
+"svc_sql_pt","User","True","nfoster","NameLooksLikeService;InServiceAccountsOU","None","2","11/18/2026 12:36:05 AM","","False","OU=ServiceAccounts,OU=Peachtree,OU=Acquired,DC=iamlab,DC=local"
+"svc_backup_pt","User","True","nfoster","NameLooksLikeService;InServiceAccountsOU","None","2","11/18/2026 12:46:20 AM","","False","OU=ServiceAccounts,OU=Peachtree,OU=Acquired,DC=iamlab,DC=local"
+"Administrator","User","True","","PasswordNeverExpires","BadName;NoOwner;NeverRotates;Privileged","84","11/11/2026 2:46:38 AM","","True","CN=Users,DC=iamlab,DC=local"
+"MSOL_a1af344839a3","User","True","bwayne","PasswordNeverExpires","BadName;NeverRotates","6","11/13/2026 5:48:57 PM","","False","CN=Users,DC=iamlab,DC=local"

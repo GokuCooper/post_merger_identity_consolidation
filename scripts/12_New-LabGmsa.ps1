@@ -51,11 +51,13 @@ if (-not (Get-ADServiceAccount -Filter "Name -eq '$Name'" -ErrorAction SilentlyC
     Write-Host "Created gMSA $Name" -ForegroundColor Green
 }
 
-$g = Get-ADServiceAccount -Identity $Name -Properties PrincipalsAllowedToRetrieveManagedPassword, ManagedPasswordIntervalInDays, Description
+# DNSHostName is not a default property, so it must be requested by name or it comes back blank.
+$g = Get-ADServiceAccount -Identity $Name -Properties DNSHostName, PrincipalsAllowedToRetrieveManagedPassword, ManagedPasswordIntervalInDays, Description
 [pscustomobject]@{
     Name                 = $g.Name
     DNSHostName          = $g.DNSHostName
-    RotationIntervalDays = $g.ManagedPasswordIntervalInDays
+    # ManagedPasswordIntervalInDays is a collection. Without this it exports as a type name, not 30.
+    RotationIntervalDays = [int]($g.ManagedPasswordIntervalInDays | Select-Object -First 1)
     AllowedHosts         = ($g.PrincipalsAllowedToRetrieveManagedPassword | ForEach-Object { ($_ -split ',')[0] -replace '^CN=' }) -join ';'
     Description          = $g.Description
 } | Tee-Object -Variable record | Format-List

@@ -1,0 +1,2 @@
+"Name","DNSHostName","RotationIntervalDays","AllowedHosts","Description"
+"gmsa_reports_pt","gmsa_reports_pt.iamlab.local","30","DKNMIG01","Owner: mreed | App: reports | Env: pt | gMSA, rotated by Windows"
