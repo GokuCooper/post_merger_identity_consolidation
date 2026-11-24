@@ -2,8 +2,14 @@
 #
 # It is identical to the agent sign in, except it does NOT use the
 # "access-agent" environment. Without the environment, GitHub puts a
-# different subject in the OIDC token (repo:...:ref:refs/heads/<branch>),
-# which does not match the federated credential in Entra.
+# different subject in the OIDC token:
+#   repo:GokuCooper@<owner_id>/post_merger_identity_consolidation@<repo_id>:ref:refs/heads/main
+# which does not match the federated credential in Entra (it ends in
+# :environment:access-agent).
+#
+# The IDs come from REPOSITORY secrets with the same names, because a job with
+# no environment cannot read environment secrets. Without them, azure/login
+# would fail for the wrong reason (missing client-id) and prove nothing.
 #
 # Expected result: azure/login fails with an AADSTS700213 / AADSTS70021 style
 # "no matching federated identity record" error. Screenshot it. That failure
@@ -23,8 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Try to sign in without the approved environment
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           allow-no-subscriptions: true

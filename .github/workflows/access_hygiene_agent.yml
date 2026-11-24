@@ -4,11 +4,15 @@
 # and hands back a Graph token that expires on its own.
 #
 # One time setup in GitHub (Settings):
-#   Environments  -> create "access-agent"
-#   Variables     -> AZURE_CLIENT_ID and AZURE_TENANT_ID (IDs are not secrets)
+#   Environments -> "access-agent", deployment branches limited to main
+#   Environment secrets -> AZURE_CLIENT_ID and AZURE_TENANT_ID
+#     These are identifiers, not credentials. They are stored as secrets only so
+#     GitHub masks them in run logs if this repo is ever made public.
+#   Environment secret (optional) -> TEST_USER_OBJECT_ID for the read only proof
 # One time setup in Entra (app registration -> Certificates & secrets -> Federated credentials):
 #   Issuer   https://token.actions.githubusercontent.com
-#   Subject  repo:GokuCooper/post_merger_identity_consolidation:environment:access-agent
+#   Subject  repo:GokuCooper@<owner_id>/post_merger_identity_consolidation@<repo_id>:environment:access-agent
+#            (immutable subject format: owner and repo IDs are never reused, names can be)
 #   Audience api://AzureADTokenExchange
 
 name: Access hygiene agent
@@ -26,12 +30,14 @@ jobs:
   review:
     runs-on: ubuntu-latest
     environment: access-agent   # must match the federated credential subject
+    env:
+      TEST_USER_OBJECT_ID: ${{ secrets.TEST_USER_OBJECT_ID }}
     steps:
       - name: Check out repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -39,21 +45,21 @@ jobs:
         run: pip install -r agent/requirements.txt
 
       - name: Sign in to Entra with OIDC (no secret)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           allow-no-subscriptions: true   # the lab tenant has no Azure subscription
 
       - name: Run access review
         run: python agent/access_hygiene_agent.py --report evidence/day7_agent_report.csv
 
       - name: Prove the agent is read only
-        if: ${{ vars.TEST_USER_OBJECT_ID != '' }}
-        run: python agent/access_hygiene_agent.py --prove-read-only "${{ vars.TEST_USER_OBJECT_ID }}"
+        if: ${{ env.TEST_USER_OBJECT_ID != '' }}
+        run: python agent/access_hygiene_agent.py --prove-read-only "$TEST_USER_OBJECT_ID"
 
       - name: Upload report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: access-hygiene-report
           path: evidence/day7_agent_report.csv

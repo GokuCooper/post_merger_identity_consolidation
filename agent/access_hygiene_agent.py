@@ -5,7 +5,7 @@ A small, read only "AI agent" style automation that reviews Peachtree identities
 in Entra ID and writes a report. The interesting part is not what it does, it is
 HOW it signs in:
 
-  BEFORE (local run):   a client secret in a .env file      -> a password that can leak
+  BEFORE (local run):   a client secret held only in the terminal session -> a password that can leak
   AFTER  (GitHub run):  workload identity federation (OIDC) -> no stored secret at all
 
 The code is the same in both cases. Only the credential source changes:
@@ -109,6 +109,14 @@ def days_since(iso: str | None) -> int | None:
     return (datetime.now(timezone.utc) - stamp).days
 
 
+def scrub_upn(upn: str | None) -> str | None:
+    """Keep the username, hide the tenant domain. Reports land in the repo and in
+    workflow artifacts, and the tenant domain identifies the lab tenant."""
+    if not upn or "@" not in upn:
+        return upn
+    return upn.split("@", 1)[0] + "@<tenant>"
+
+
 def build_report(users: list[dict], ext_name: str | None, has_sign_in: bool) -> list[dict]:
     rows = []
     for u in users:
@@ -131,7 +139,7 @@ def build_report(users: list[dict], ext_name: str | None, has_sign_in: bool) -> 
 
         rows.append({
             "displayName": u.get("displayName"),
-            "userPrincipalName": u.get("userPrincipalName"),
+            "userPrincipalName": scrub_upn(u.get("userPrincipalName")),
             "sourceCompany": company,
             "accountEnabled": u.get("accountEnabled"),
             "lastSignIn": last_sign_in or ("unknown (no license)" if not has_sign_in else "never"),
