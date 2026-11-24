@@ -574,7 +574,7 @@ Workload identity federation is how mature teams remove long lived secrets from 
 | Entra Connect sync | [ ] | Screenshots 17 to 22, `day4_entra_source_company.csv` |
 | SailPoint governance rebuild | [ ] | Screenshots 23 to 28, `day5_target_state_mapping.csv` |
 | CyberArk and service accounts | Done | Screenshots 72 to 101b, `day6_nhi_inventory_after.csv` |
-| Agent with no stored secret | Done | Screenshots 102 to 112, `day7_agent_report.csv`, `day7_nhi_register.csv` |
+| Agent with no stored secret | Done | Screenshots 102 to 113b, `day7_agent_report.csv`, `day7_nhi_register.csv` |
 
 ---
 
@@ -645,7 +645,7 @@ Workload identity federation is how mature teams remove long lived secrets from 
 ```
 post_merger_identity_consolidation/
 ├── README.md
-├── screenshots/        650 images, 00 to 112 (letter suffixes where a step needed more than one)
+├── screenshots/        653 images, 00 to 113b (letter suffixes where a step needed more than one)
 ├── scripts/            12 PowerShell scripts, numbered in the order they run
 ├── agent/
 │   ├── access_hygiene_agent.py
@@ -660,7 +660,7 @@ All names and accounts are lab data on the `iamlab.local` and `peachtree.local` 
 
 ## Full screenshot index
 
-650 screenshots. Each day is collapsed so the page stays readable. Click a day to expand it.
+653 screenshots. Each day is collapsed so the page stays readable. Click a day to expand it.
 
 <details>
 <summary><b>Overview</b> (1 screenshots)</summary>
@@ -1330,7 +1330,7 @@ All names and accounts are lab data on the `iamlab.local` and `peachtree.local` 
 </details>
 
 <details>
-<summary><b>Day 7: Agent with no password</b> (39 screenshots)</summary>
+<summary><b>Day 7: Agent with no password</b> (42 screenshots)</summary>
 
 | # | File | Shows |
 |---|---|---|
@@ -1373,6 +1373,9 @@ All names and accounts are lab data on the `iamlab.local` and `peachtree.local` 
 | 111 | [`111_negative_test_rejected.png`](screenshots/111_negative_test_rejected.png) | Negative test rejected |
 | 111a | [`111a_negative_test_aadsts700213_log.png`](screenshots/111a_negative_test_aadsts700213_log.png) | Negative test aadsts700213 log |
 | 112 | [`112_row21_retest_tenant_guid.png`](screenshots/112_row21_retest_tenant_guid.png) | Row21 retest tenant guid |
+| 113 | [`113_stale_day6_copies_dry_run.png`](screenshots/113_stale_day6_copies_dry_run.png) | Stale day6 copies dry run |
+| 113a | [`113a_cleanup_done_staged_for_commit.png`](screenshots/113a_cleanup_done_staged_for_commit.png) | Cleanup done staged for commit |
+| 113b | [`113b_day7_committed.png`](screenshots/113b_day7_committed.png) | Day7 committed |
 
 </details>
 
