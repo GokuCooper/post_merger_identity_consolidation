@@ -639,7 +639,7 @@ Workload identity federation is how mature teams remove long lived secrets from 
 | Entra Connect sync | Done | Screenshots 22 to 28p, `day4_entra_source_company.csv` |
 | SailPoint governance rebuild | Done | Screenshots 29 to 71a, `day5_target_state_mapping.csv` |
 | CyberArk and service accounts | Done | Screenshots 72 to 101b, `day6_nhi_inventory_after.csv` |
-| Agent with no stored secret | Done | Screenshots 102 to 113b, `day7_agent_report.csv`, `day7_nhi_register.csv` |
+| Agent with no stored secret | Done | Screenshots 102 to 114, `day7_agent_report.csv`, `day7_nhi_register.csv` |
 
 ---
 
@@ -710,7 +710,7 @@ Workload identity federation is how mature teams remove long lived secrets from 
 ```
 post_merger_identity_consolidation/
 ├── README.md
-├── screenshots/        653 images, 00 to 113b (letter suffixes where a step needed more than one)
+├── screenshots/        654 images, 00 to 114 (letter suffixes where a step needed more than one)
 ├── scripts/            12 PowerShell scripts, numbered in the order they run
 ├── agent/
 │   ├── access_hygiene_agent.py
@@ -721,11 +721,11 @@ post_merger_identity_consolidation/
 └── evidence/           CSV and TXT output from every script, plus the decision and troubleshooting logs
 ```
 
-All names and accounts are lab data on the `iamlab.local` and `peachtree.local` domains. No passwords or client secrets appear in any screenshot or file. Tenant and object IDs are blurred. The Peachtree SIDs in the Day 3 evidence files and the domain GUID in the Day 1 trust output are kept on purpose: they come from throwaway lab domains, they can't sign anyone in, and the SID history proof depends on them.
+All names and accounts are lab data on the `iamlab.local` and `peachtree.local` domains. No passwords or client secrets appear in any screenshot or file. Tenant and object IDs are blurred. The Peachtree SIDs in the Day 3 evidence files and the domain GUID in the Day 1 trust output are kept on purpose: they come from throwaway lab domains, they can't sign anyone in, and the SID history proof depends on them. The full git history was scanned with gitleaks before publishing: one finding, a screenshot filename that looked like an API key, was reviewed and ignored by its exact fingerprint in `.gitleaksignore` (screenshot 114).
 
 ## Full screenshot index
 
-653 screenshots. Each day is collapsed so the page stays readable. Click a day to expand it.
+654 screenshots. Each day is collapsed so the page stays readable. Click a day to expand it.
 
 <details>
 <summary><b>Overview</b> (1 screenshots)</summary>
@@ -1395,7 +1395,7 @@ All names and accounts are lab data on the `iamlab.local` and `peachtree.local` 
 </details>
 
 <details>
-<summary><b>Day 7: Agent with no password</b> (42 screenshots)</summary>
+<summary><b>Day 7: Agent with no password</b> (43 screenshots)</summary>
 
 | # | File | Shows |
 |---|---|---|
@@ -1441,6 +1441,7 @@ All names and accounts are lab data on the `iamlab.local` and `peachtree.local` 
 | 113 | [`113_stale_day6_copies_dry_run.png`](screenshots/113_stale_day6_copies_dry_run.png) | Stale day6 copies dry run |
 | 113a | [`113a_cleanup_done_staged_for_commit.png`](screenshots/113a_cleanup_done_staged_for_commit.png) | Cleanup done staged for commit |
 | 113b | [`113b_day7_committed.png`](screenshots/113b_day7_committed.png) | Day7 committed |
+| 114 | [`114_gitleaks_false_positive_then_clean.png`](screenshots/114_gitleaks_false_positive_then_clean.png) | Gitleaks false positive then clean |
 
 </details>
 
