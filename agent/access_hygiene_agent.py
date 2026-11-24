@@ -177,7 +177,9 @@ def main() -> int:
         return prove_read_only(token, args.prove_read_only)
 
     ext_name = find_extension_name(token)
-    print(f"Source company attribute: {ext_name or 'NOT FOUND (check Day 4 directory extension sync)'}")
+    # The generated name embeds the sync app's ID. Run logs can become public, so print a masked form.
+    shown = f"extension_<app_id>_{ATTRIBUTE}" if ext_name else "NOT FOUND (check Day 4 directory extension sync)"
+    print(f"Source company attribute: {shown}")
 
     users, has_sign_in = list_users(token, ext_name)
     rows = build_report(users, ext_name, has_sign_in)
