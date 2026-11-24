@@ -8,8 +8,6 @@ Every claim in this write up is backed by a screenshot, a script, or a raw evide
 
 Related repos: [CyberArk Tier 0 PAM](https://github.com/GokuCooper/cyberark_pam_tier0_privileged_access) · [SailPoint access governance](https://github.com/GokuCooper/sailpoint_iiq_access_governance) · [SailPoint JML workflows](https://github.com/GokuCooper/sailpoint_iiq_jml_workflows) · [Microsoft Graph inactive user report](https://github.com/GokuCooper/msgraph_inactive_user_report)
 
-> Fill in every [bracket] from your own runs before publishing, then delete this line.
-
 ---
 
 ## The 30 second version
@@ -19,18 +17,18 @@ Related repos: [CyberArk Tier 0 PAM](https://github.com/GokuCooper/cyberark_pam_
 | **What problem does this solve?** | After an acquisition, the new company's people live in a directory you cannot see, with shared admin passwords, ownerless service accounts, and access reviews done by email. |
 | **What did I build?** | A forest trust, a GPO baseline and custom schema attribute, an ADMT migration with SID history, Entra Connect sync, a SailPoint rebuild of Peachtree's access, CyberArk vaulting with safe service account rotation, and a federated identity for an automation agent. |
 | **How did I prove it works?** | 12 PowerShell scripts that write their results to `evidence/`, a migration count table matched by SID history, Microsoft Graph queries against the synced tenant, CyberArk and Event Viewer logs, and GitHub Actions run logs. |
-| **Tools** | Windows Server, Active Directory, Group Policy, ADMT 3.2, SQL Server Express, Microsoft Entra Connect [version], SailPoint IdentityIQ 8.3, CyberArk PAM 12.6, Microsoft Graph, GitHub Actions, PowerShell, Python |
-| **Built on** | [dates] |
+| **Tools** | Windows Server, Active Directory, Group Policy, ADMT 3.2, SQL Server Express, Microsoft Entra Connect Sync, SailPoint IdentityIQ 8.3, CyberArk PAM 12.6, Microsoft Graph, GitHub Actions, PowerShell, Python |
+| **Built on** | November 2026 |
 
 ## The short version
 
 | Measure | Before | After |
 |---|---|---|
 | Forests that can see each other | 0 | 2 (two way trust), then 1 after migration |
-| Peachtree identities in the DKN directory | 0 | [12] users, [6] groups |
-| Migrated accounts that kept their old access (SID history) | 0 | [ ] |
-| Peachtree users synced to Entra ID with a source company tag | 0 | [ ] |
-| Legacy access lines with an owner and a decision | 0 of [15] | [15] of [15] |
+| Peachtree identities in the DKN directory | 0 | 15 user accounts (12 people, 3 service accounts) and 6 groups |
+| Migrated accounts that kept their old access (SID history) | 0 | 15 of 15 users and 6 of 6 groups |
+| Peachtree users synced to Entra ID with a source company tag | 0 | 12 of 12 |
+| Legacy access lines with an owner and a decision | 0 of 15 | 15 of 15 |
 | Shared admin passwords outside a vault | 2 (admin, itadmin) | 0 (two built in Administrators are a documented gap) |
 | Service accounts with a named owner | 0 of 6 | 6 of 7 |
 | Service accounts fully compliant | 0 of 6 | 5 of 7 |
@@ -87,150 +85,196 @@ First you build a hallway between the two houses so people can walk back and for
 ## Day 1: Connect the two forests
 
 ### Situation
-Peachtree arrived as a separate forest. Nobody at DKN could see a single Peachtree account, and no Peachtree user could open a DKN file share.
+Peachtree arrived as a separate forest. Nobody at DKN could see a single Peachtree account, and no Peachtree user could open a DKN file share. Before anything can move, the two directories have to trust each other.
+
+In plain words: two buildings with no hallway between them. Day 1 builds the hallway and puts a guard at each end.
 
 ### Build
-1. Promoted `PTDC01` as the first DC of a new forest, `peachtree.local`.
-2. Seeded it with [`scripts/01_Seed-Peachtree.ps1`](scripts/01_Seed-Peachtree.ps1): [12] employees, [6] groups, 2 shared admin accounts, and 3 service accounts with no owner. Output: [`evidence/day1_peachtree_seed.csv`](evidence/day1_peachtree_seed.csv).
-3. Created DNS conditional forwarders both ways.
-4. Built a two way forest trust with forest wide authentication.
+1. Promoted `PTDC01` as the first DC of a new forest, `peachtree.local` (screenshot 01).
+2. Seeded it with [`scripts/01_Seed-Peachtree.ps1`](scripts/01_Seed-Peachtree.ps1): 12 employees, 6 groups, 2 shared admin accounts, and 3 service accounts with no owner. Output: [`evidence/day1_peachtree_seed.csv`](evidence/day1_peachtree_seed.csv).
+3. Created DNS conditional forwarders both ways: `peachtree.local` to 192.168.1.60 on the DKN DC, and `iamlab.local` to 192.168.1.54 on PTDC01.
+4. Built a two way forest trust with forest wide authentication, then proved it with a shared folder that only a DKN Domain Local group can read.
 
-### Snag: [title]
+### Snag: the trust wizard didn't know Peachtree existed
 ![Trust wizard DNS failure](screenshots/02_trust_wizard_dns_failure.png)
-*Screenshot 02, Beginning: [what the error said].*
+*Screenshot 02, Beginning: the wizard asked "The name you specified is not a valid Windows domain name. Is the specified name a Kerberos V5 realm?"*
 
-**Root cause layer:** [DNS]. [What you checked, in order, and what each check ruled out.]
+**Root cause layer:** DNS. The wizard's question sounds like a Kerberos problem, but `Resolve-DnsName peachtree.local` returned DNS_ERROR_RCODE_NAME_ERROR and `nltest /dsgetdc:peachtree.local` returned 1355 ERROR_NO_SUCH_DOMAIN. The DKN DC simply had no way to find a Peachtree DC.
 
-**Fix:** [ ]
+**Fix:** conditional forwarders on both DCs. Right after adding them, DNS resolved the SRV record but nltest still said 1355. That was the Netlogon locator's negative cache remembering the earlier failure, and `nltest /dsgetdc:peachtree.local /force` cleared it.
 
-![Conditional forwarders on both sides](screenshots/03_conditional_forwarders_both_sides.png)
-*Screenshot 03, Middle: [ ].*
+![Conditional forwarder from iamlab to peachtree](screenshots/03a_forwarder_iamlab_to_peachtree.png)
+*Screenshot 03a, Middle: the forwarder on the DKN side. Screenshot 03b shows the matching one on PTDC01.*
+
+Two more snags came after the trust existed. `netdom trust /verify` said "Access is denied", but that was netdom's own permission precheck, not the trust. Two independent tools (`nltest /sc_verify` and the Validate button) both said the trust was healthy. And a negative test looked like it failed: `net use` "succeeded" for mlopez, who isn't in the DKN group. Connecting isn't access, though. Reading a file returned "Access is denied" (screenshots 05a and 05b).
 
 ### Result
 ![Forest trust validated](screenshots/04_forest_trust_validated.png)
-*Screenshot 04, End: [ ].*
+*Screenshot 04, End: the trust is validated, in place and active in both directions.*
 
-[`scripts/02_Test-ForestTrust.ps1`](scripts/02_Test-ForestTrust.ps1) ran before and after. Raw output: [`evidence/day1_trust_validation_before.txt`](evidence/day1_trust_validation_before.txt) and [`evidence/day1_trust_validation_after.txt`](evidence/day1_trust_validation_after.txt).
+| Check | Result |
+|---|---|
+| `nltest /sc_verify:peachtree.local` | NERR_Success |
+| Name suffix routing | `*.peachtree.local` Enabled |
+| Peachtree user in `DKN_Projects_Readers` reads the DKN share | Allowed (screenshot 05) |
+| Peachtree user not in the group reads the DKN share | Access is denied, also on a fresh session by IP (screenshots 05a, 05b) |
+
+[`scripts/02_Test-ForestTrust.ps1`](scripts/02_Test-ForestTrust.ps1) recorded the final state: [`evidence/day1_trust_validation_after.txt`](evidence/day1_trust_validation_after.txt).
 
 ### Engineer notes
-* **Forest wide vs selective authentication.** [Why the lab used forest wide and why a real merger would start selective.]
+* **Forest wide vs selective authentication.** Forest wide lets any Peachtree user authenticate to any DKN server, and permissions decide the rest. The lab used it so every later test had a clear path. A real merger starts with selective authentication and grants "Allowed to authenticate" server by server, so the trust is narrow until each system is ready.
+* **Only Domain Local groups can hold members from another forest.** That's why the cross forest test group is `DKN_Projects_Readers` and not a Global group.
 * **SID filtering stayed on today.** It gets turned off on Day 3 on purpose, and that is a risk to write down.
 
 ### Real world mapping
-[ ]
+The first technical task after an acquisition closes is usually connectivity: DNS, then a trust, then a few proven access paths. Doing it with forwarders and a validated trust, and proving both a yes and a no, is the same pattern a consolidation team uses before they schedule a single migration wave.
 
 ---
 
 ## Day 2: One set of house rules (GPO and schema)
 
 ### Situation
-[ ]
+Before moving anyone in, DKN needed a place to put Peachtree's objects, rules that apply only to them, and a way to remember where each identity came from after it moves. Without a source tag, six months after the migration nobody can say who used to be a Peachtree employee.
 
 ### Build
-1. Created `OU=Peachtree,OU=Acquired` with Users, Groups, Servers, and ServiceAccounts under it.
-2. `GPO_Merger_Security_Baseline` (password, lockout, audit policy), `GPO_Tier0_Logon_Restrictions`, and Windows LAPS.
+1. Created `OU=Peachtree,OU=Acquired` with Users, Groups, Servers, and ServiceAccounts under it, so merger rules target acquired assets without touching DKN (screenshots 06c and 06d).
+2. Built `GPO_Merger_Security_Baseline` (a legal notice at logon and a 15 minute inactivity lock), a deny logon GPO that blocks `PEACHTREE\Domain Admins` from local and RDP logon on `OU=Acquired`, and `PSO_Peachtree_Migrated_Users` (14 characters, 24 history, lockout after 5 tries in 15 minutes) for the people moving in.
 3. Generated a unique OID with [`scripts/03_New-SchemaOID.ps1`](scripts/03_New-SchemaOID.ps1) and created the `dknSourceCompany` attribute. Record: [`evidence/day2_schema_oid.txt`](evidence/day2_schema_oid.txt).
-4. Stamped every DKN user with [`scripts/04_Set-SourceCompany.ps1`](scripts/04_Set-SourceCompany.ps1). Output: [`evidence/day2_source_company_stamp_dkn.csv`](evidence/day2_source_company_stamp_dkn.csv).
+4. Stamped every DKN human user with [`scripts/04_Set-SourceCompany.ps1`](scripts/04_Set-SourceCompany.ps1). Output: [`evidence/day2_source_company_stamp_dkn.csv`](evidence/day2_source_company_stamp_dkn.csv).
 
-### Snag: [title]
-![GPO not applied](screenshots/07_gpresult_gpo_not_applied.png)
-*Screenshot 07, Beginning: [ ].*
+### Snag: the baseline GPO never reached the server
+![GPO not applied](screenshots/07_baseline_gpo_not_applied.png)
+*Screenshot 07, Beginning: `gpresult /r /scope computer` listed only the Default Domain Policy.*
 
-**Root cause layer:** [ ]
+**Root cause layer:** AD (OU design). DKNMIG01 was joined without `-OUPath`, so it landed in `CN=Computers`. That's a container, not an OU, and GPOs can't link to containers. It was also outside `OU=Acquired`, where the baseline lives.
 
-**Fix:** [ ]
+**Fix:** moved it with `Move-ADObject` to `OU=Servers,OU=Peachtree,OU=Acquired`, ran `gpupdate /force`, then proved it at three levels: gpresult, the registry values, and the legal notice on screen at the next logon (screenshots 08 to 09b).
+
+The schema step had its own scare. The AD Schema snap-in crashed with "MMC has detected an error in a snap-in" while adding the attribute to the user class. A schema change is permanent, so retrying blindly could have created a duplicate. Checking the directory with PowerShell showed the change had already committed: right OID, Unicode string, single value, and `mayContain` listed `dknSourceCompany` (screenshots 11b to 11d).
 
 ### Result
-![Baseline applied](screenshots/09_gpresult_baseline_applied.png)
-*Screenshot 09, End: [ ].*
+![Baseline applied](screenshots/09_baseline_gpo_applied.png)
+*Screenshot 09, End: GPO_Merger_Security_Baseline applied to DKNMIG01.*
+
+| Control | Proof |
+|---|---|
+| Baseline GPO | gpresult, registry values, legal notice at logon (09 to 09b) |
+| Old Peachtree Domain Admins blocked on acquired servers | Logon denied for `PEACHTREE\Administrator` (10c, 10d) |
+| Password rules for migrated users | PSO_Peachtree_Migrated_Users (10e) |
+| Source company attribute | Created and on the user class (11c, 11d). DKN users stamped after a dry run (11f, `day2_source_company_stamp_dkn.csv`) |
 
 ### Engineer notes
 * **Schema changes cannot be deleted, only made defunct.** I snapshotted the DC before touching the schema.
+* **Password policy in an OU GPO only changes local accounts.** Domain user password rules come from the domain policy or a PSO, which is why Peachtree's rules live in a PSO on a group.
 * **Why one custom attribute matters.** `dknSourceCompany` follows each identity through AD and up to Entra ID: Entra Connect syncs it on Day 4, and the agent filters on it on Day 7. On Day 5, SailPoint picked roles from the company attribute in the HR feed instead, because HR is the authoritative source for who works where.
 
 ### Real world mapping
-[ ]
+Acquired environments arrive with their own admins and their own habits. A separate OU tree with its own baseline, plus a deny logon rule for the old admin group, is how a merger team contains that risk on day one. The source company tag is a small design choice that pays off in every later audit question about acquired users.
 
 ---
 
 ## Day 3: Move everyone into one forest (ADMT)
 
 ### Situation
-[ ]
+Peachtree's people had to become DKN accounts without losing access to the Peachtree files they still needed on Monday morning. One name was also taken: DKN already had a `jsmith` (Jamie Smith), and Peachtree's Jordan Smith was `jsmith` too.
+
+In plain words: everyone moves to the new house, but each person carries their old key along (SID history), so the old doors still open until the locks are changed.
 
 ### Build
 1. Took a before snapshot with [`scripts/05_Export-PeachtreeDirectory.ps1`](scripts/05_Export-PeachtreeDirectory.ps1).
-2. Prepared SID history: auditing on in both domains, the `PEACHTREE$$$` group, `TcpipClientSupport`, and SID filtering off on the trust.
-3. Migrated groups, then users, then the admin and service accounts with ADMT 3.2.
-4. Stamped the new arrivals with `04_Set-SourceCompany.ps1 -Company Peachtree`.
-5. Checked every object with [`scripts/06_Compare-MigrationResults.ps1`](scripts/06_Compare-MigrationResults.ps1), which matches by SID history first.
+2. Prepared SID history: auditing on in both domains, the `PEACHTREE$$$` group, `TcpipClientSupport`, and SID history enabled on the trust (screenshots 12b to 12h).
+3. Migrated groups, then users, then the service accounts with ADMT 3.2. The two shared Domain Admins (`admin`, `itadmin`) were left behind on purpose, because carrying a foreign forest's Domain Admin SIDs into iamlab would bring their privilege along.
+4. Renamed Peachtree's `jsmith` to `jsmith_pt` with an ADMT include file (screenshots 14c to 14e).
+5. Stamped the new arrivals with `04_Set-SourceCompany.ps1 -Company Peachtree`.
+6. Checked every object with [`scripts/06_Compare-MigrationResults.ps1`](scripts/06_Compare-MigrationResults.ps1), which matches by SID history first.
 
-### Snag: [title]
-![SID history prerequisite error](screenshots/13_sid_history_prereq_error.png)
-*Screenshot 13, Middle: [ ].*
-
-**Root cause layer:** [ ]
-
-**Fix:** [ ]
-
+### Snag: "0 errors" while ADMT gave Jamie Jordan's access
 ![jsmith name conflict](screenshots/14_jsmith_name_conflict.png)
-*Screenshot 14, Middle: `jsmith` already existed in `iamlab.local`. [The rule you chose and why.]*
+*Screenshot 14, Middle: ADMT skipped Peachtree's jsmith because `jsmith` already existed in iamlab.*
+
+The run summary said 12 examined, 11 copied, 0 errors. The log said more. Because of the name clash, "Fix users' group memberships" matched on sAMAccountName and added DKN's **Jamie Smith** to Jordan's Peachtree groups, including `PT_Ops_Dispatch`, which carries the old Peachtree SID. Jamie had quietly gained real access to Peachtree dispatch files.
+
+![Jamie in the wrong groups](screenshots/14a_jamie_smith_wrong_groups.png)
+*Screenshot 14a, Middle: DKN's Jamie Smith in PT_All_Staff and PT_Ops_Dispatch.*
+
+**Root cause layer:** App (ADMT behavior). The group fix step matches by name, not by the source SID, so a collision becomes a grant.
+
+**Fix:** removed Jamie from both groups and verified with `Get-ADPrincipalGroupMembership` (14b). Then migrated Jordan on his own as `jsmith_pt` through an include file, so the rename is written down and repeatable instead of a hand edit (14c to 14e).
+
+The access test had one more snag: `jsmith_pt` got "System error 1909, the referenced account is currently locked out". A mistyped password in a `runas /netonly` window kept retrying in the background and hit the new PSO lockout threshold of 5. Event 4740 named the source machine, and the unlock plus a clean retry worked (19a to 19d).
 
 ### Result
 
 | Type | In source | Found in target | With SID history | Renamed | Missing |
 |---|---|---|---|---|---|
-| Users | [ ] | [ ] | [ ] | [ ] | [ ] |
-| Groups | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Users | 17 | 15 | 15 | 1 | 2 |
+| Groups | 6 | 6 | 6 | 0 | 0 |
 
-Source: [`evidence/day3_migration_counts.csv`](evidence/day3_migration_counts.csv). Per object detail: [`evidence/day3_migration_results.csv`](evidence/day3_migration_results.csv).
+The 17 source users are 12 people, 2 shared Domain Admins, and 3 service accounts. The 2 missing are the Domain Admins, left behind by design. The 1 rename is `jsmith_pt`. Source: [`evidence/day3_migration_counts.csv`](evidence/day3_migration_counts.csv). Per object detail: [`evidence/day3_migration_results.csv`](evidence/day3_migration_results.csv).
 
-![Old share access through SID history](screenshots/16_old_share_access_via_sid_history.png)
-*Screenshot 16, End: [ ].*
+![Old share access through SID history](screenshots/19e_jsmith_pt_reads_peachtree_share.png)
+*Screenshot 19e, End: IAMLAB\jsmith_pt reads a Peachtree only share through SID history. The control user, Jamie, authenticated but got "Access is denied" (19g, 19j), which proves the access came from SID history and nothing else.*
+
+The temporary cross forest admin rights used for the migration were removed the same day (20 and 20a), and the generated password file stayed out of the repo (21a).
 
 ### Engineer notes
 * **ADMT 3.2 is no longer updated by Microsoft** and is not listed as supported on Windows Server 2012 R2 through 2022. Real migrations use commercial tools that automate the same steps. I used ADMT to learn what those tools do underneath.
+* **Read the migration log, not the summary.** The Jamie Smith grant only showed up line by line.
 * **SID filtering is off on the trust until cleanup.** That lets SID history work, and it also widens what the trust allows. It goes back on after shares are re permissioned.
 
 ### Real world mapping
-[ ]
+Name collisions happen in every merger, and SID history is the standard way to keep users working during cutover. This day shows both sides of it: the access it preserves (jsmith_pt reads dispatch files) and the access it can leak (Jamie). A collision rule written down before the migration, and a denied control user in the test, are what separate a migration from a guess.
 
 ---
 
 ## Day 4: One key card for on prem and cloud (Entra Connect)
 
 ### Situation
-[ ]
+DKN runs Microsoft 365, so Peachtree's people needed cloud identities that match their new AD accounts. The source company tag also had to make it to the cloud, so cloud side tools could tell Peachtree users apart.
 
 ### Build
-1. Installed Entra Connect [version] on `DKNSYNC01` from the Entra admin center, custom install, password hash sync.
-2. OU filtering so service accounts never leave AD.
-3. Directory extension sync for `dknSourceCompany`.
-4. Predicted the errors first with [`scripts/07_Find-SyncBlockers.ps1`](scripts/07_Find-SyncBlockers.ps1).
+1. Built DKNSYNC01 in a new `OU=Tier0_Servers`, because a sync server with password hash sync holds DCSync level rights (23b to 23e).
+2. Installed Microsoft Entra Connect Sync from the Entra admin center (version recorded in screenshot 25a): custom install, password hash sync, default virtual service account.
+3. OU filtering so service accounts never leave AD. Peachtree is selected child by child (Users only), so a new OU under Peachtree doesn't start syncing by accident (25c0, 25c).
+4. Directory extension sync for `dknSourceCompany` (25e).
+5. Predicted the errors first with [`scripts/07_Find-SyncBlockers.ps1`](scripts/07_Find-SyncBlockers.ps1), including a duplicate proxyAddress I planted on purpose to see how sync handles it (24c).
+6. Switched the inter forest referral ticket from RC4 to AES 256 on both sides of the trust, a finding logged on Day 3 (22 to 22c).
 
-### Snag: [title]
-![Duplicate proxyAddresses error](screenshots/19_duplicate_proxyaddress_error.png)
-*Screenshot 19, Middle: [ ].*
+### Snag: a duplicate address vanished with zero errors
+![Alias dropped with no error](screenshots/28a_graph_alias_dropped_no_error.png)
+*Screenshot 28a, Middle: Graph shows jsmith_pt with only its primary address. The planted duplicate is simply gone.*
 
-**Root cause layer:** [ ]
+I expected the planted duplicate `smtp:jsmith@` alias to fail the export. Instead, every dashboard was green: the export succeeded, Connect Health showed 0 duplicate attribute errors (28), and Graph v1.0 and beta both returned empty provisioning errors (28a1).
 
-**Fix:** [ ]
+**Root cause layer:** Sync (duplicate attribute resiliency). Entra quietly dropped the conflicting alias instead of failing the object. Only comparing AD to Graph showed it.
 
-![onmicrosoft UPN](screenshots/20_onmicrosoft_upn_explained.png)
-*Screenshot 20, Middle: users landed as `@<tenant>.onmicrosoft.com` because `.local` is not a domain anyone can own.*
+**Fix:** removed the alias at the source in AD, ran a delta sync, and reran script 07: 0 duplicates (28j to 28l). AD is the source of authority, so a cloud side edit would have been overwritten.
+
+Checking that took its own troubleshooting. Microsoft Graph PowerShell crashed on the sync server's Windows PowerShell 5.1 with a TypeLoad error. Rather than fight it there, I removed it from the Tier 0 box and ran Graph from the admin workstation in PowerShell 7, with `-TenantId` so the sign in went to the work tenant (28b0 to 28i).
+
+![onmicrosoft UPN](screenshots/26_upn_suffix_not_added_warning.png)
+*Screenshot 26, Middle: the wizard warned that `iamlab.local` can't be verified, so users landed as `@<tenant>.onmicrosoft.com`. `.local` is not a domain anyone can own.*
 
 ### Result
-![Sync with zero errors](screenshots/21_sync_zero_errors.png)
-*Screenshot 21, End: [ ].*
+![Source company synced to Entra](screenshots/28o_source_company_synced_to_entra.png)
+*Screenshot 28o, End: read back from Microsoft Graph, 18 DKN and 12 Peachtree synced users carry their source company.*
 
-[`scripts/08_Get-SyncedSourceCompany.ps1`](scripts/08_Get-SyncedSourceCompany.ps1) read the extension attribute back out of Microsoft Graph: [`evidence/day4_entra_source_company.csv`](evidence/day4_entra_source_company.csv).
+| Check | Result |
+|---|---|
+| Synced users with `dknSourceCompany` | DKN 18, Peachtree 12 |
+| Service accounts in Entra | 0 (filtered out) |
+| Duplicate addresses before and after | 1, then 0 ([before](evidence/day4_duplicate_addresses_before.csv), [after](evidence/day4_duplicate_addresses_after.csv)) |
+| Inter forest referral ticket | RC4 before, AES 256 after |
+
+[`scripts/08_Get-SyncedSourceCompany.ps1`](scripts/08_Get-SyncedSourceCompany.ps1) read the extension attribute back out of Microsoft Graph: [`evidence/day4_entra_source_company.csv`](evidence/day4_entra_source_company.csv). The Entra portal doesn't show directory extensions, so Graph is the only real proof.
 
 ### Engineer notes
-* **Microsoft now enforces a minimum Entra Connect Sync version.** Older builds stop syncing. I installed [version] and recorded it.
-* [ ]
+* **Microsoft now enforces a minimum Entra Connect Sync version.** Older builds stop syncing. I installed the current build from the Entra admin center and recorded it (25a).
+* **A green dashboard means "no errors reported," not "no problems."** Sync, Connect Health and Graph all said fine while an alias was missing. Compare the source to the target.
+* **Keep admin tools off Tier 0 servers.** The sync server can effectively read every password hash in the domain. Graph PowerShell runs from the admin workstation instead.
 
 ### Real world mapping
-[ ]
+Hybrid identity is where on prem mistakes become cloud mistakes. Treating the sync server as Tier 0, filtering out service accounts, fixing conflicts at the source, and proving the result with Graph instead of the portal are the same habits a production identity team uses before any acquired users get Microsoft 365 licenses.
 
 ---
 
@@ -239,31 +283,52 @@ Source: [`evidence/day3_migration_counts.csv`](evidence/day3_migration_counts.cs
 ### Situation
 Peachtree tracked "who has what" in a spreadsheet ([`evidence/day5_peachtree_legacy_access.csv`](evidence/day5_peachtree_legacy_access.csv)) and reviewed it by email once a year. Two of the people on it had already left, and one line had no approver at all.
 
+In plain words: the old school kept the hall passes in a notebook. Day 5 moves them into a system that knows every student, every pass, and who signs off on each one.
+
 ### Build
 1. Mapped every legacy line to an AD group, a SailPoint entitlement, a role, and a decision: [`evidence/day5_target_state_mapping.csv`](evidence/day5_target_state_mapping.csv).
-2. Connected IdentityIQ to Active Directory with the AD connector and IQService.
-3. Added the Peachtree rows to the HR feed and correlated on `employeeID`.
-4. Mined roles from the migrated groups and published [ ] business roles.
-5. Ran a manager certification scoped to Peachtree identities.
+2. Connected IdentityIQ to Active Directory with the AD connector and IQService, running as `svc_iiq_dkn` with write rights scoped to Peachtree users and groups only.
+3. Added the 12 Peachtree people to the HR feed and correlated AD accounts on `employeeID`, because ADMT renamed `jsmith` to `jsmith_pt` and account names can't be trusted after a migration.
+4. Mined roles from the migrated groups and published 7 business roles on top of 6 IT roles ([`config/iiq/roles/peachtree_department_roles.xml`](config/iiq/roles/peachtree_department_roles.xml)).
+5. Built a separation of duties policy for AP plus GL, scoped the joiner and leaver lifecycle events by company, and tested every rule on one person who should match and one who shouldn't.
+6. Ran three staged manager certifications and one targeted review of the Peachtree managers by the DKN IAM Team.
 
-### Snag: [title]
-![Correlation failed for jsmith_pt](screenshots/26_correlation_failed_jsmith_pt.png)
-*Screenshot 26, Middle: correlating on account name broke because ADMT renamed `jsmith` to `jsmith_pt`.*
+### Snag: two Marcus Reeds became one identity
+![One Marcus Reed](screenshots/35c_identity_warehouse_one_marcus_reed.png)
+*Screenshot 35c, Middle: after the first HR aggregation, 11 identities were created instead of 12. One "Marcus Reed" held two HR accounts: DKN's E1002, a Systems Administrator with IT Security Admin, and Peachtree's PT1003, the IT Manager.*
 
-**Root cause layer:** [ ]
+**Root cause layer:** IGA (identity matching). I ruled out the correlation config (already employeeId), a corrupted employeeId (still E1002), and the creation rule on its own. When employeeId found no match, the account was attached by display name, and both men are named Marcus Reed. That would have given a Peachtree manager a DKN security admin's access in every report and review.
 
-**Fix:** [ ]
+**Fix:** changed the HR feed's Display Attribute to `employeeId`, named new identities by employee ID, removed the PT1003 link and re-aggregated: 1 created, 23 updated, two separate Marcus Reeds (36g to 36j).
+
+![Two Marcus Reeds](screenshots/36j_two_marcus_reeds.png)
+*Screenshot 36j: two identities, two employee IDs.*
+
+Other Day 5 catches, each in the troubleshooting log: a pre-merger "every active employee" role that silently gave a Peachtree user DKN ERP access (row 28, lesson 34), a DKN joiner event that created a real DKN Portal account for a Peachtree identity and couldn't delete it until I added a Delete branch to the provisioning rule (row 29), four role rules that said OR instead of AND and were caught at the impact review before going live (row 30), and a leaver that never fired because the migrated identities had no baseline snapshot yet (row 31).
 
 ### Result
-![Certification complete](screenshots/28_peachtree_certification_complete.png)
-*Screenshot 28, End: [ ] items reviewed, [ ] revoked.*
+![Targeted review signed](screenshots/66d_targeted_review_signed.png)
+*Screenshot 66d, End: the targeted review signed by the DKN IAM Team. Across all four certifications, 39 items reviewed, 2 revoked, 1 SoD exception allowed with an expiry.*
+
+| Measure | Result |
+|---|---|
+| Legacy spreadsheet lines with an owner and a decision | 15 of 15 |
+| Lines retired because nothing was behind them | 3 (kwhite and rgarcia had left, crm_poweruser had no approver or AD group) |
+| Certifications | 3 manager reviews (Dana, Kiran, PT1003) and 1 targeted review |
+| Items reviewed | 39 |
+| Revoked and verified gone in AD | 2 (Dana's warehouse access, PT1003's helpdesk access), still gone after a provisioning refresh (67a to 67g) |
+| SoD exception | Kiran's AP plus GL, allowed to 12/15/2026 with a compensating control |
+
+Exports: [`evidence/certifications/`](evidence/certifications/).
 
 ### Engineer notes
 * **Honest framing:** this migrates a spreadsheet based process into SailPoint. It is not a migration between two licensed IGA platforms. The design work (mapping, target state, rebuild) is the same.
-* The AP plus GL approver line is a segregation of duties conflict. [What you decided.]
+* **The AP plus GL approver line is a segregation of duties conflict.** Kiran Patel is the Finance Manager and the only person in both groups, and she has no manager on record. The violation routes to the DKN IAM Team so she never reviews herself, and it's allowed only until 12/15/2026 with a second approver on her payments and a monthly GL review.
+* **After a merger, every "everyone" rule is a question.** Two pre-merger rules said "every active employee" and quietly included the acquired company.
+* **A revoke isn't done until the target system says so.** Both revokes were checked in AD, and a provisioning refresh proved no role put the access back.
 
 ### Real world mapping
-[ ]
+Most acquired companies have no IGA platform, so the real project is exactly this: turn a spreadsheet into a target state, correlate on a key that survives the migration, and run the first certification with the new managers. Catching identity merges, unscoped birthright rules, and SoD conflicts before the first review goes out is what makes that review defensible to an auditor.
 
 ---
 
@@ -568,11 +633,11 @@ Workload identity federation is how mature teams remove long lived secrets from 
 
 | Deliverable | Status | Evidence |
 |---|---|---|
-| Forest trust | [ ] | Screenshots 01 to 05, `day1_trust_validation_after.txt` |
-| GPO baseline and schema attribute | [ ] | Screenshots 06 to 11, `day2_schema_oid.txt` |
-| ADMT migration with SID history | [ ] | Screenshots 12 to 16, `day3_migration_counts.csv` |
-| Entra Connect sync | [ ] | Screenshots 17 to 22, `day4_entra_source_company.csv` |
-| SailPoint governance rebuild | [ ] | Screenshots 23 to 28, `day5_target_state_mapping.csv` |
+| Forest trust | Done | Screenshots 01 to 05b, `day1_trust_validation_after.txt` |
+| GPO baseline and schema attribute | Done | Screenshots 06 to 11g, `day2_schema_oid.txt` |
+| ADMT migration with SID history | Done | Screenshots 12 to 21a, `day3_migration_counts.csv` |
+| Entra Connect sync | Done | Screenshots 22 to 28p, `day4_entra_source_company.csv` |
+| SailPoint governance rebuild | Done | Screenshots 29 to 71a, `day5_target_state_mapping.csv` |
 | CyberArk and service accounts | Done | Screenshots 72 to 101b, `day6_nhi_inventory_after.csv` |
 | Agent with no stored secret | Done | Screenshots 102 to 113b, `day7_agent_report.csv`, `day7_nhi_register.csv` |
 
@@ -582,9 +647,9 @@ Workload identity federation is how mature teams remove long lived secrets from 
 
 | Day | What could have hidden a problem | How I checked | What the evidence showed |
 |---|---|---|---|
-| 1 | The trust wizard says "validated" from one side only | Ran `02_Test-ForestTrust.ps1` from the DKN side and signed in as a Peachtree user | [ ] |
-| 3 | ADMT's summary counts can hide a skipped object | Matched every source SID against target sIDHistory | [ ] |
-| 4 | The Entra portal does not show directory extensions | Queried Microsoft Graph directly | [ ] |
+| 1 | The trust wizard says "validated" from one side only, and a successful `net use` looks like access | Ran `02_Test-ForestTrust.ps1`, confirmed with `nltest /sc_verify`, and read a file as a Peachtree user inside and outside the DKN group | NERR_Success and the trust validated both ways. The member read the share. The non member got "Access is denied" on the file, also on a fresh session by IP |
+| 3 | ADMT's summary counts can hide a skipped object or a wrong grant | Matched every source SID against target sIDHistory, and read the migration log line by line | Users 17 in source, 15 found, 15 with SID history, 1 renamed, 2 missing by design. Groups 6 of 6. The log showed DKN's Jamie Smith added to Peachtree groups, which the counts never would have |
+| 4 | The Entra portal does not show directory extensions, and sync can drop a conflict without an error | Queried Microsoft Graph directly and compared AD to Graph for the planted duplicate | DKN 18 and Peachtree 12 carry `dknSourceCompany`. The duplicate alias was silently dropped, fixed at the source, and the after scan showed 0 duplicates |
 | 6 | The CPM can report success while a service is broken, and dual control can still approve the wrong window | Restarted SQL and read Event Viewer after rotation. Read every request on its detail page. Checked PasswordLastSet on the DC after each CPM change | SQL failed with 7038 until the usage was added, then restarted with no logon errors. Request 2 was approved for 13 hours from the list view and then deleted. PasswordLastSet matched the CPM change times (3:09 and 3:16 AM) |
 | 7 | A green run does not prove least privilege, and a run log can leak what a screenshot hides | Forced a write attempt and a wrong subject sign in. Read every run log and the downloaded report | Write attempt returned HTTP 403. The wrong subject got AADSTS700213. Run #3's log showed the extension app ID, so the agent output was masked and the run deleted. UPNs in the report read `@<tenant>` |
 
@@ -604,17 +669,17 @@ Workload identity federation is how mature teams remove long lived secrets from 
 * Vault **IAMLAB\Administrator and PEACHTREE\Administrator** after writing and testing a break glass procedure.
 * Shorten the PVWA **default request window** for Tier 0, turn on **multi level approval**, and **sign the PSM .rdp files** with a trusted certificate.
 * Replace the shared `pam_reconcile` Domain Admin with a **delegated reconcile account** scoped to OU=ServiceAccounts.
-* [ ]
+* Turn on **TLS and client authentication for IQService**, and rename every SailPoint identity by employee ID so no identity is keyed by display name.
 
 ---
 
 ## Interview talking points (Problem, Solution, Impact, Learning)
 
 **"Walk me through a directory consolidation."**
-* **Problem:** [ ]
-* **Solution:** [ ]
-* **Impact:** [ ]
-* **Learning:** [ ]
+* **Problem:** DKN acquired Peachtree, a separate forest with 12 employees, shared Domain Admin passwords, ownerless service accounts, and a spreadsheet for access reviews. One username, `jsmith`, already existed at DKN.
+* **Solution:** Connected the forests with DNS forwarders and a validated two way trust, built an acquired OU tree with its own baseline and a deny logon rule for the old admins, migrated 15 accounts and 6 groups with ADMT and SID history under a written collision rule, synced them to Entra ID with a custom source company attribute, and rebuilt their access in SailPoint with correlation on employee ID.
+* **Impact:** 15 of 15 accounts and 6 of 6 groups kept their old access through SID history, 12 of 12 Peachtree users synced with their source tag, and all 15 legacy access lines got an owner and a decision, with 2 unapproved grants revoked and verified in AD.
+* **Learning:** The summary is never the whole story. ADMT said 0 errors while it gave DKN's Jamie Smith another person's Peachtree access, and Entra said 0 errors while it dropped a duplicate address. The log and a source to target comparison caught both.
 
 **"How do you rotate service account passwords without an outage?"**
 * **Problem:** Peachtree's SQL service account came over from the migration with a password nobody knew, and rotating it would break SQL Server the next time it restarted.
@@ -632,9 +697,9 @@ Workload identity federation is how mature teams remove long lived secrets from 
 
 ## Resume bullets
 
-- Consolidated two Active Directory forests in a simulated acquisition: configured a two way forest trust, migrated [X] users and [Y] groups with ADMT and SID history, and resolved account naming collisions with a documented rule.
-- Built a merger security baseline with Group Policy (Tier 0 logon restrictions, Windows LAPS) and extended the AD schema with a custom source company attribute synced to Entra ID through Entra Connect.
-- Migrated a legacy spreadsheet access process into SailPoint IdentityIQ: target state mapping, AD connector via IQService, correlation redesign, role mining, and a rebuilt certification that removed [Z] stale access lines.
+- Consolidated two Active Directory forests in a simulated acquisition: configured a two way forest trust, migrated 15 user accounts and 6 groups with ADMT and SID history, and resolved account naming collisions with a documented rule.
+- Built a merger security baseline with Group Policy (acquired OU tree, deny logon for the acquired Domain Admins, a fine grained password policy for migrated users) and extended the AD schema with a custom source company attribute synced to Entra ID through Entra Connect.
+- Migrated a legacy spreadsheet access process into SailPoint IdentityIQ: target state mapping, AD connector via IQService, correlation redesign, role mining, and four certifications that reviewed 39 items, revoked 2 unapproved grants verified in AD, and retired 3 orphaned legacy access lines.
 - Brought 5 privileged and service accounts under CyberArk with dual control, PSM recorded sessions, and CPM rotation with Windows Service usages, replaced an unused service account with a gMSA, and raised service account compliance from 0 of 6 to 5 of 7 using a PowerShell NHI inventory and naming standard.
 - Replaced an automation agent's client secret with Entra workload identity federation from GitHub Actions using immutable owner and repo ID subjects, proved read only Graph access with a blocked write (HTTP 403) and a rejected wrong subject sign in (AADSTS700213), and surfaced 12 of 12 migrated identities as enabled but never used.
 
@@ -656,7 +721,7 @@ post_merger_identity_consolidation/
 └── evidence/           CSV and TXT output from every script, plus the decision and troubleshooting logs
 ```
 
-All names and accounts are lab data on the `iamlab.local` and `peachtree.local` domains. No passwords or client secrets appear in any screenshot or file. Tenant and object IDs are blurred.
+All names and accounts are lab data on the `iamlab.local` and `peachtree.local` domains. No passwords or client secrets appear in any screenshot or file. Tenant and object IDs are blurred. The Peachtree SIDs in the Day 3 evidence files and the domain GUID in the Day 1 trust output are kept on purpose: they come from throwaway lab domains, they can't sign anyone in, and the SID history proof depends on them.
 
 ## Full screenshot index
 
