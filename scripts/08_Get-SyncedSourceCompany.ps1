@@ -32,7 +32,7 @@ param(
 )
 
 Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
-Connect-MgGraph -TenantId $TenantId -Scopes 'User.Read.All', 'Directory.Read.All' -NoWelcome
+Connect-MgGraph -TenantId $TenantId -Scopes 'User.Read.All', 'Directory.Read.All' -NoWelcome -ErrorAction Stop
 
 # 1. Find the generated extension name
 $body = @{ isSyncedFromOnPremises = $true } | ConvertTo-Json

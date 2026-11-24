@@ -480,39 +480,87 @@ After an acquisition, the acquired company's admin and service accounts are usua
 ## Day 7: An AI agent with an identity and no password
 
 ### Situation
-Automation and AI agents call APIs on their own, and the easy way to give them access is a client secret, which is just a password sitting in a file.
+Automation and AI agents call APIs on their own, with nobody watching each request. The easy way to give one access is a **client secret**, which is just a password for a program. It sits in a file or a CI setting, it works from anywhere in the world, and if it leaks, nobody notices until the damage is done.
 
-### Build
-1. Ran [`agent/access_hygiene_agent.py`](agent/access_hygiene_agent.py) locally with a client secret (the before picture).
-2. Gave the app registration read only Microsoft Graph permissions.
-3. Added a federated credential trusting only this repo's `access-agent` environment.
-4. Ran the agent from [`.github/workflows/access_hygiene_agent.yml`](.github/workflows/access_hygiene_agent.yml) and deleted the secret.
-5. Added the agent to the NHI register with a human owner: [`evidence/day7_nhi_register.csv`](evidence/day7_nhi_register.csv).
+Peachtree's 12 migrated identities needed a recurring access review, so I built a small read only agent ([`agent/access_hygiene_agent.py`](agent/access_hygiene_agent.py)) that reads them from Microsoft Graph and flags anything stale. Then I made it the cleanest identity in the whole project: a human owner, two read only permissions, and **no password anywhere**. It proves who it is with a short lived token that GitHub creates for each run and Entra checks against a trust rule.
 
-### Snag: [title]
-![Subject mismatch](screenshots/38_aadsts_subject_mismatch.png)
-*Screenshot 38, Middle: [exact AADSTS error].*
+In plain words: a password is a house key you have to hide somewhere. A federated credential is the doorman recognizing you. There is nothing to steal, because nothing is stored.
 
-**Root cause layer:** [ ]
+**Result:** the agent went from a client secret (screenshot 103) to zero stored secrets (screenshot 109). It can read but not write (HTTP 403, screenshot 110a), and Entra rejects the same repo when the job skips the protected environment (AADSTS700213, screenshot 111a).
 
-**Fix:** [ ]
+![Scheduled run failed before setup](screenshots/102a_azure_login_no_client_id_or_tenant.png)
+*Screenshot 102a, Beginning: the scheduled workflow had already run twice before the agent had an identity. With no client ID and no tenant ID, azure/login stopped before asking for a token. It failed closed: no identity, no data.*
+
+### Part A: Register the agent and take the before picture
+
+1. Registered `access_hygiene_agent` in Entra as a single tenant app with no redirect URI, because it never signs in a person (screenshots 102c and 102d).
+2. Removed the default delegated `User.Read` and granted two **application** permissions with admin consent: `User.Read.All` (read users and the synced `dknSourceCompany` attribute) and `AuditLog.Read.All` (read last sign in). Nothing that writes (screenshot 102e).
+3. Created a client secret that expired the next day and kept it only in the terminal's memory with `Read-Host -MaskInput`, never in a file (screenshots 102f and 102g).
+4. Ran the agent locally. It signed in with the secret, found the synced attribute, and reviewed **12 Peachtree identities: all 12 enabled and never signed in** (screenshots 103 and 103a). The agent worked with just the two permissions, so `Directory.Read.All` was tested as unnecessary and left off.
+
+![Before: signed in with a client secret](screenshots/103_agent_local_run_secret_auth.png)
+*Screenshot 103, the before picture. Line 1: `client_secret (stored password, the BEFORE picture)`.*
+
+### Part B: Replace the secret with a trust rule
+
+1. Added a federated credential that trusts exactly one workload: this repo's `access-agent` GitHub environment (screenshots 104e and 104f).
+2. Configured the `access-agent` environment: deployments limited to `main`, and the client and tenant IDs stored as environment secrets so GitHub masks them as `***` in every log (screenshots 105 and 105a).
+3. Patched the workflow and agent: IDs read from secrets, Node 24 action versions, and the tenant domain scrubbed from every UPN in the report (`achen@<tenant>`) (screenshots 106 to 106b).
+4. Ran the workflow. It passed on the first try (screenshots 107 to 107e).
+5. Deleted the client secret, cleared the terminal, and proved the old way is dead: the same agent run locally with no secret now fails with `CredentialUnavailableError` (screenshots 109 and 109a).
+
+![The token GitHub sent matched the trust rule](screenshots/107c_oidc_login_step_masked.png)
+*Screenshot 107c, Middle: the subject GitHub put in the token, `repo:GokuCooper@18008858/post_merger_identity_consolidation@1455978965:environment:access-agent`, matches the federated credential character for character. The client and tenant IDs show as `***`.*
+
+**Snags in Part B**
+
+* **The Entra form wasn't the one in my notes.** The GitHub scenario now asks for the **Organization ID** and **Repository ID** and builds an *immutable* subject: `repo:{owner}@{owner_id}/{repo}@{repo_id}:...`. My workflow comments described the old name only format. Names can be reused: delete or rename a repo, and someone else can create one with the same name and inherit the trust. IDs are never reused. GitHub applies the ID format by default to repos created after July 15, 2026, and older repos keep the name format until someone opts in. Entra and GitHub have to agree exactly, so before building anything I confirmed this repo's first commit was 2026-11-12. That meant its tokens already carried IDs, and no opt in was needed (screenshots 104 to 104e).
+* **`gh` was not installed.** Rather than install a tool for two numbers, I took the owner ID from the public GitHub API, the repo ID from the page source, and the creation date from the first commit (screenshots 104a to 104d).
+* **The environment already existed, wide open.** GitHub creates an environment the first time a job names it, and the failed scheduled runs had done exactly that. It had no secrets and no branch rule. Existing is not the same as configured, so I locked it to `main` (screenshot 105a).
+* **The negative test would have failed for the wrong reason.** It runs without the environment on purpose, so it cannot read environment secrets. Without a fix it would have stopped at "client-id missing", which proves nothing about Entra. The IDs went in as repository secrets too, so the test reaches Entra and gets rejected there (screenshot 106a).
+* **A run log printed an ID from my blur list.** Run #3's log showed the full `extension_<app ID>_dknSourceCompany` name. Logs become public if the repo does. The agent now prints `extension_<app_id>_dknSourceCompany`, run #4 confirmed it, and run #3 was deleted (screenshots 107d to 108c).
+
+### Part C: Prove the guardrails, not just the green check
+
+A green run only proves the agent **can** do its job. I also needed proof it **can't** do anything else.
+
+1. **Read only, tested.** The workflow made the agent try to change a lab user's job title. Graph answered **HTTP 403**, and the step passed *because* the write failed (screenshot 110a).
+2. **Only the approved job, tested.** [`federation_negative_test.yml`](.github/workflows/federation_negative_test.yml) uses the same repo, the same branch, and the same app, but skips the environment. The subject changed to `...@1455978965:ref:refs/heads/main`, and Entra refused it: `AADSTS700213: No matching federated identity record found` (screenshots 111 and 111a).
+3. **Closed an old loop.** Troubleshooting row 21 (Day 4) guessed that a Graph SDK warning came from using the tenant domain instead of the tenant GUID. I retested with the GUID and got the same warning, so the theory was wrong. The row now says so (screenshot 112).
+
+![Entra rejected the wrong subject](screenshots/111a_negative_test_aadsts700213_log.png)
+*Screenshot 111a: the same repo without the `access-agent` environment. Entra answered AADSTS700213.*
 
 ### Result
-![Workflow green with no secrets](screenshots/40_workflow_green_no_secrets.png)
-*Screenshot 40, End: green run, zero client secrets on the app registration.*
+
+![Client secrets 0, federated credentials 1](screenshots/109_client_secret_deleted.png)
+*Screenshot 109, End: Client secrets (0), Federated credentials (1). The only way in is a job on `main`, in the `access-agent` environment, in repo 1455978965.*
 
 | Guardrail | Test | Result |
 |---|---|---|
-| Read only | Agent tries to change a user | [403 Forbidden] |
-| Only the approved job | [`federation_negative_test.yml`](.github/workflows/federation_negative_test.yml) signs in without the environment | [Rejected by Entra] |
-| A human owns it | Agent appears in a SailPoint certification | [Screenshot 41] |
+| No stored secret | Client secrets on the app after cutover, and a local run with the old method | 0 secrets (screenshot 109). Local run fails with `CredentialUnavailableError` (screenshot 109a) |
+| Read only | Agent tries to change a user's job title | HTTP 403, PASS (screenshot 110a) |
+| Only the approved job | Same repo and branch, no environment | AADSTS700213, rejected by Entra (screenshot 111a) |
+| Nothing sensitive in logs or reports | Read every run log and the downloaded report | IDs masked as `***`, extension ID masked, UPNs scrubbed to `@<tenant>` (screenshots 107c, 108a, 108c) |
+| A human owns it | NHI register | Owner DeJurnett, review due 2027-02-15 ([`evidence/day7_nhi_register.csv`](evidence/day7_nhi_register.csv)) |
+
+| Measure | Before | After |
+|---|---|---|
+| Stored secrets the agent can use | 1 client secret | 0 |
+| Where the agent can sign in from | Anywhere the secret is | One GitHub environment, `main` only |
+| Graph permissions | Default delegated User.Read | 2 application permissions, read only, write proven blocked |
+| Peachtree identities reviewed every Monday | 0 | 12 (12 flagged: enabled, never signed in) |
+
+The finding itself matters too: **12 of 12 migrated Peachtree identities are enabled and have never signed in.** In a real merger those are live accounts nobody is watching, which is why they go into a certification rather than staying enabled by default. Report: [`evidence/day7_agent_report.csv`](evidence/day7_agent_report.csv).
 
 ### Engineer notes
-* Microsoft recommends moving GitHub federated credentials to immutable subjects (owner and repo IDs) so a renamed or recreated repo cannot reuse the trust.
-* [ ]
+* **A federated credential has three parts that must match exactly:** issuer (`https://token.actions.githubusercontent.com`), subject, and audience (`api://AzureADTokenExchange`). When it fails, the azure/login log prints the subject GitHub sent. Compare that line to the credential before changing anything else.
+* **Two locks, owned by two systems.** Entra decides which subject it trusts, and GitHub decides which branches can enter the environment. Either one alone leaves a gap.
+* **Identifiers are not secrets, but logs are not private.** Client and tenant IDs can't sign anyone in, yet they still went into secrets so GitHub masks them. If the repo goes public, every old run log and artifact goes with it.
+* **Test the negative path.** A permission list and a green run are claims. A 403 and an AADSTS700213 are evidence.
 
 ### Real world mapping
-[ ]
+Workload identity federation is how mature teams remove long lived secrets from CI/CD for Azure, AWS, and GCP alike. An agent with read access to every user is a privileged non human identity, so it gets what Day 6 gave the service accounts: a named owner, least privilege (NIST 800-53 AC-6), an entry in the NHI register (AC-2), and a recurring review. The new part is the credential: instead of a password you rotate, the trust is scoped to one workload and every token it uses is short lived and expires on its own.
 
 ---
 
@@ -526,7 +574,7 @@ Automation and AI agents call APIs on their own, and the easy way to give them a
 | Entra Connect sync | [ ] | Screenshots 17 to 22, `day4_entra_source_company.csv` |
 | SailPoint governance rebuild | [ ] | Screenshots 23 to 28, `day5_target_state_mapping.csv` |
 | CyberArk and service accounts | Done | Screenshots 72 to 101b, `day6_nhi_inventory_after.csv` |
-| Agent with no stored secret | [ ] | Screenshots 36 to 41, `day7_nhi_register.csv` |
+| Agent with no stored secret | Done | Screenshots 102 to 112, `day7_agent_report.csv`, `day7_nhi_register.csv` |
 
 ---
 
@@ -538,7 +586,7 @@ Automation and AI agents call APIs on their own, and the easy way to give them a
 | 3 | ADMT's summary counts can hide a skipped object | Matched every source SID against target sIDHistory | [ ] |
 | 4 | The Entra portal does not show directory extensions | Queried Microsoft Graph directly | [ ] |
 | 6 | The CPM can report success while a service is broken, and dual control can still approve the wrong window | Restarted SQL and read Event Viewer after rotation. Read every request on its detail page. Checked PasswordLastSet on the DC after each CPM change | SQL failed with 7038 until the usage was added, then restarted with no logon errors. Request 2 was approved for 13 hours from the list view and then deleted. PasswordLastSet matched the CPM change times (3:09 and 3:16 AM) |
-| 7 | A green run does not prove least privilege | Forced a write attempt and a wrong subject sign in | [ ] |
+| 7 | A green run does not prove least privilege, and a run log can leak what a screenshot hides | Forced a write attempt and a wrong subject sign in. Read every run log and the downloaded report | Write attempt returned HTTP 403. The wrong subject got AADSTS700213. Run #3's log showed the extension app ID, so the agent output was masked and the run deleted. UPNs in the report read `@<tenant>` |
 
 ---
 
@@ -549,7 +597,10 @@ Automation and AI agents call APIs on their own, and the easy way to give them a
 * **Verify a real domain** in Entra before the first sync so users keep real UPNs.
 * Turn **SID filtering back on** and remove SID history once shares are re permissioned.
 * Keep the CyberArk reconcile account for Peachtree Tier 0 in its **own Safe**.
-* Move the federated credential to **immutable subjects** and restrict the GitHub environment to the main branch.
+* Put the **access_hygiene_agent** identity in a recurring **SailPoint certification** with its owner, alongside the service accounts.
+* Add **branch protection** on `main`, so the environment lock means reviewed code, not just any push to main.
+* **Pin GitHub Actions by commit SHA** instead of major version tags.
+* Add a **flexible federated credential** that also checks the `repository_id` claim, as Microsoft recommends on top of the immutable subject.
 * Vault **IAMLAB\Administrator and PEACHTREE\Administrator** after writing and testing a break glass procedure.
 * Shorten the PVWA **default request window** for Tier 0, turn on **multi level approval**, and **sign the PSM .rdp files** with a trusted certificate.
 * Replace the shared `pam_reconcile` Domain Admin with a **delegated reconcile account** scoped to OU=ServiceAccounts.
@@ -572,7 +623,10 @@ Automation and AI agents call APIs on their own, and the easy way to give them a
 * **Learning:** A running service never rechecks its password, so a successful change proves nothing until the service restarts. The restart is the real test.
 
 **"How would you govern AI agents?"**
-Treat them as identities: a human owner, least privilege, no stored secrets, a federated trust locked to one workload, and a recurring certification.
+* **Problem:** An automation agent needed to read every Peachtree identity in Entra ID. The easy path was a client secret, a password for a program that works from anywhere if it leaks.
+* **Solution:** Treated the agent as an identity. A human owner in the NHI register, two read only Graph application permissions, and a federated credential that trusts one GitHub environment by immutable owner and repo ID, locked to `main`. Then I deleted the secret.
+* **Impact:** Zero stored secrets. A write attempt returned 403, the same repo without the environment got AADSTS700213, and the first federated run found 12 of 12 migrated identities enabled and never signed in.
+* **Learning:** A green run proves the agent can do its job, not that it can't do more. I also learned to treat CI logs as public: one printed an ID from my blur list, and the fix belonged in the code, not in a screenshot editor.
 
 ---
 
@@ -582,7 +636,7 @@ Treat them as identities: a human owner, least privilege, no stored secrets, a f
 - Built a merger security baseline with Group Policy (Tier 0 logon restrictions, Windows LAPS) and extended the AD schema with a custom source company attribute synced to Entra ID through Entra Connect.
 - Migrated a legacy spreadsheet access process into SailPoint IdentityIQ: target state mapping, AD connector via IQService, correlation redesign, role mining, and a rebuilt certification that removed [Z] stale access lines.
 - Brought 5 privileged and service accounts under CyberArk with dual control, PSM recorded sessions, and CPM rotation with Windows Service usages, replaced an unused service account with a gMSA, and raised service account compliance from 0 of 6 to 5 of 7 using a PowerShell NHI inventory and naming standard.
-- Replaced an automation agent's client secret with Entra workload identity federation from GitHub Actions, enforcing read only Graph permissions and owner based certification of the agent identity.
+- Replaced an automation agent's client secret with Entra workload identity federation from GitHub Actions using immutable owner and repo ID subjects, proved read only Graph access with a blocked write (HTTP 403) and a rejected wrong subject sign in (AADSTS700213), and surfaced 12 of 12 migrated identities as enabled but never used.
 
 ---
 
@@ -591,7 +645,7 @@ Treat them as identities: a human owner, least privilege, no stored secrets, a f
 ```
 post_merger_identity_consolidation/
 ├── README.md
-├── screenshots/        611 images, 00 to 101b (letter suffixes where a step needed more than one)
+├── screenshots/        650 images, 00 to 112 (letter suffixes where a step needed more than one)
 ├── scripts/            12 PowerShell scripts, numbered in the order they run
 ├── agent/
 │   ├── access_hygiene_agent.py
@@ -606,7 +660,7 @@ All names and accounts are lab data on the `iamlab.local` and `peachtree.local` 
 
 ## Full screenshot index
 
-611 screenshots. Each day is collapsed so the page stays readable. Click a day to expand it.
+650 screenshots. Each day is collapsed so the page stays readable. Click a day to expand it.
 
 <details>
 <summary><b>Overview</b> (1 screenshots)</summary>
@@ -1272,6 +1326,53 @@ All names and accounts are lab data on the `iamlab.local` and `peachtree.local` 
 | 101 | [`101_svc_reports_pt_disabled.png`](screenshots/101_svc_reports_pt_disabled.png) | Svc reports pt disabled |
 | 101a | [`101a_nhi_inventory_after.png`](screenshots/101a_nhi_inventory_after.png) | Nhi inventory after |
 | 101b | [`101b_nhi_before_vs_after_counts.png`](screenshots/101b_nhi_before_vs_after_counts.png) | Nhi before vs after counts |
+
+</details>
+
+<details>
+<summary><b>Day 7: Agent with no password</b> (39 screenshots)</summary>
+
+| # | File | Shows |
+|---|---|---|
+| 102 | [`102_scheduled_agent_run_failed_before_setup.png`](screenshots/102_scheduled_agent_run_failed_before_setup.png) | Scheduled agent run failed before setup |
+| 102a | [`102a_azure_login_no_client_id_or_tenant.png`](screenshots/102a_azure_login_no_client_id_or_tenant.png) | Azure login no client id or tenant |
+| 102b | [`102b_day7_preflight.png`](screenshots/102b_day7_preflight.png) | Day7 preflight |
+| 102c | [`102c_register_agent_app_form.png`](screenshots/102c_register_agent_app_form.png) | Register agent app form |
+| 102d | [`102d_agent_app_registered.png`](screenshots/102d_agent_app_registered.png) | Agent app registered |
+| 102e | [`102e_agent_api_permissions_read_only.png`](screenshots/102e_agent_api_permissions_read_only.png) | Agent api permissions read only |
+| 102f | [`102f_short_lived_secret_created.png`](screenshots/102f_short_lived_secret_created.png) | Short lived secret created |
+| 102g | [`102g_env_vars_set_masked.png`](screenshots/102g_env_vars_set_masked.png) | Env vars set masked |
+| 103 | [`103_agent_local_run_secret_auth.png`](screenshots/103_agent_local_run_secret_auth.png) | Agent local run secret auth |
+| 103a | [`103a_agent_report_before.png`](screenshots/103a_agent_report_before.png) | Agent report before |
+| 104 | [`104_federated_credential_scenario_github.png`](screenshots/104_federated_credential_scenario_github.png) | Federated credential scenario github |
+| 104a | [`104a_gh_cli_not_installed.png`](screenshots/104a_gh_cli_not_installed.png) | Gh cli not installed |
+| 104b | [`104b_github_owner_id.png`](screenshots/104b_github_owner_id.png) | Github owner id |
+| 104c | [`104c_github_repo_id.png`](screenshots/104c_github_repo_id.png) | Github repo id |
+| 104d | [`104d_repo_first_commit_date.png`](screenshots/104d_repo_first_commit_date.png) | Repo first commit date |
+| 104e | [`104e_federated_credential_form_immutable.png`](screenshots/104e_federated_credential_form_immutable.png) | Federated credential form immutable |
+| 104f | [`104f_federated_credential_added.png`](screenshots/104f_federated_credential_added.png) | Federated credential added |
+| 105 | [`105_github_environment_secrets_added.png`](screenshots/105_github_environment_secrets_added.png) | Github environment secrets added |
+| 105a | [`105a_environment_locked_to_main.png`](screenshots/105a_environment_locked_to_main.png) | Environment locked to main |
+| 106 | [`106_patched_files_hash_check.png`](screenshots/106_patched_files_hash_check.png) | Patched files hash check |
+| 106a | [`106a_repo_secrets_for_negative_test.png`](screenshots/106a_repo_secrets_for_negative_test.png) | Repo secrets for negative test |
+| 106b | [`106b_day7_workflow_patch_pushed.png`](screenshots/106b_day7_workflow_patch_pushed.png) | Day7 workflow patch pushed |
+| 107 | [`107_workflow_runs_before_federation.png`](screenshots/107_workflow_runs_before_federation.png) | Workflow runs before federation |
+| 107a | [`107a_federated_run_success_list.png`](screenshots/107a_federated_run_success_list.png) | Federated run success list |
+| 107b | [`107b_federated_run_steps.png`](screenshots/107b_federated_run_steps.png) | Federated run steps |
+| 107c | [`107c_oidc_login_step_masked.png`](screenshots/107c_oidc_login_step_masked.png) | Oidc login step masked |
+| 107d | [`107d_agent_signed_in_federated.png`](screenshots/107d_agent_signed_in_federated.png) | Agent signed in federated |
+| 107e | [`107e_run_summary_artifact.png`](screenshots/107e_run_summary_artifact.png) | Run summary artifact |
+| 108 | [`108_mask_extension_id_pushed.png`](screenshots/108_mask_extension_id_pushed.png) | Mask extension id pushed |
+| 108a | [`108a_clean_run_log.png`](screenshots/108a_clean_run_log.png) | Clean run log |
+| 108b | [`108b_leaky_run_deleted.png`](screenshots/108b_leaky_run_deleted.png) | Leaky run deleted |
+| 108c | [`108c_artifact_upns_scrubbed.png`](screenshots/108c_artifact_upns_scrubbed.png) | Artifact upns scrubbed |
+| 109 | [`109_client_secret_deleted.png`](screenshots/109_client_secret_deleted.png) | Client secret deleted |
+| 109a | [`109a_local_run_fails_no_secret.png`](screenshots/109a_local_run_fails_no_secret.png) | Local run fails no secret |
+| 110 | [`110_test_user_secret_added.png`](screenshots/110_test_user_secret_added.png) | Test user secret added |
+| 110a | [`110a_write_attempt_403.png`](screenshots/110a_write_attempt_403.png) | Write attempt 403 |
+| 111 | [`111_negative_test_rejected.png`](screenshots/111_negative_test_rejected.png) | Negative test rejected |
+| 111a | [`111a_negative_test_aadsts700213_log.png`](screenshots/111a_negative_test_aadsts700213_log.png) | Negative test aadsts700213 log |
+| 112 | [`112_row21_retest_tenant_guid.png`](screenshots/112_row21_retest_tenant_guid.png) | Row21 retest tenant guid |
 
 </details>
 
